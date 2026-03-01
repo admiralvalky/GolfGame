@@ -22,9 +22,8 @@ function TeamScoreCell({ val, className = '' }) {
 }
 
 function RoundCell({ raw, counting, isCut }) {
-  // Show CUT badge when round data is absent but player was cut
   if (raw == null && isCut) {
-    return <span className="text-xs text-gray-400 font-medium">CUT</span>;
+    return <span className="text-[10px] text-gray-400 font-medium tracking-wide">CUT</span>;
   }
   if (raw == null) return <span className="text-gray-300 text-sm">—</span>;
   const s = String(raw).trim().toUpperCase();
@@ -32,12 +31,12 @@ function RoundCell({ raw, counting, isCut }) {
   const isNum = !isNaN(numeric);
   return (
     <span
-      className={`inline-block text-sm font-mono px-1 rounded ${
+      className={`inline-block text-sm font-mono px-1.5 py-0.5 rounded ${
         counting
-          ? 'bg-green-800 text-white font-semibold border border-black'
+          ? 'bg-emerald-700 text-white font-semibold shadow-sm'
           : isNum && numeric > 0
-          ? 'text-red-600'
-          : 'text-gray-900'
+          ? 'text-rose-600'
+          : 'text-gray-600'
       }`}
     >
       {raw}
@@ -253,16 +252,13 @@ export default function TeamDetail() {
 
       {/* Player table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-          <span className="text-sm font-semibold text-gray-600">Picked Players</span>
-          <span className="ml-2 text-xs text-gray-400">
-            (green fill = counting toward round score)
-          </span>
+        <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+          <span className="font-semibold text-gray-700 tracking-widest uppercase" style={{fontSize:'11px'}}>Picked Players</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
-              <tr className="text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
+              <tr className="bg-gray-50 border-b border-gray-200 text-gray-400 uppercase tracking-wider" style={{fontSize:'10px'}}>
                 <th className="text-center px-3 py-3 font-medium" style={{fontSize:'10px'}}>Pos</th>
                 <th className="text-left px-5 py-3 font-medium">Player</th>
                 <th className="text-center pl-1 pr-3 py-3 font-medium" style={{fontSize:'10px'}}>Thru</th>
@@ -273,7 +269,7 @@ export default function TeamDetail() {
                 <th className="text-center px-3 py-3 font-medium border-l border-gray-300">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-200">
               {[...(team.players ?? [])].sort((a, b) => {
                 const ta = playerTotal(a.rounds);
                 const tb = playerTotal(b.rounds);
@@ -287,19 +283,23 @@ export default function TeamDetail() {
                 return (
                   <tr
                     key={player.player_espn_id}
-                    className={`even:bg-gray-50/60 ${noEligible ? 'opacity-50' : ''}`}
+                    className={`transition-colors hover:bg-slate-50 ${noEligible ? 'opacity-40' : ''}`}
                   >
-                    <td className="px-3 py-3 text-center font-mono text-gray-500 whitespace-nowrap" style={{fontSize:'10px'}}>
+                    <td className="px-3 py-4 text-center font-mono text-gray-400 whitespace-nowrap" style={{fontSize:'11px'}}>
                       {isCut
                         ? <span className="text-gray-400">CUT</span>
                         : player.rank ?? '—'}
                     </td>
-                    <td className="px-5 py-3 text-sm">
-                      <span className={noEligible ? 'line-through text-gray-500' : 'text-gray-800 font-medium'}>
+                    <td className="px-5 py-4 text-sm">
+                      <span className={
+                        noEligible
+                          ? 'line-through text-gray-400 italic'
+                          : 'text-gray-800 font-medium'
+                      }>
                         {player.player_name}
                       </span>
                     </td>
-                    <td className="pl-1 pr-3 py-3 text-center font-mono text-gray-500" style={{fontSize:'10px'}}>
+                    <td className="pl-1 pr-3 py-4 text-center font-mono text-gray-400" style={{fontSize:'11px'}}>
                       {isCut
                         ? 'CUT'
                         : player.thru != null
@@ -307,7 +307,7 @@ export default function TeamDetail() {
                         : '—'}
                     </td>
                     {[1, 2, 3, 4].map((r) => (
-                      <td key={r} className={`px-3 py-3 text-center${r === 1 ? ' border-l border-gray-300' : ''}`}>
+                      <td key={r} className={`px-3 py-4 text-center${r === 1 ? ' border-l border-gray-300' : ''}`}>
                         <RoundCell
                           raw={player.rounds?.[r]}
                           counting={player.counting_rounds?.includes(r)}
@@ -315,11 +315,11 @@ export default function TeamDetail() {
                         />
                       </td>
                     ))}
-                    <td className="px-3 py-3 text-center border-l border-gray-300">
+                    <td className="px-3 py-4 text-center border-l border-gray-300">
                       {noEligible ? (
                         <span className="text-gray-300 text-sm">—</span>
                       ) : (
-                        <TeamScoreCell val={playerTotal(player.rounds)} />
+                        <TeamScoreCell val={playerTotal(player.rounds)} className="text-base" />
                       )}
                     </td>
                   </tr>
