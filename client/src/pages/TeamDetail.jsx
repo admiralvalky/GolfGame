@@ -287,7 +287,11 @@ export default function TeamDetail() {
                       </span>
                     </td>
                     <td className="px-3 py-3 text-center text-sm text-gray-600">
-                      {player.thru != null ? player.thru : '—'}
+                      {isCut
+                        ? <span className="text-xs text-gray-400 font-medium">CUT</span>
+                        : player.thru != null
+                        ? player.thru
+                        : '—'}
                     </td>
                     {[1, 2, 3, 4].map((r) => (
                       <td key={r} className="px-3 py-3 text-center">

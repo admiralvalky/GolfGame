@@ -10,18 +10,29 @@ const scoreCache = new Map();
 
 // Derive a normalized cut/wd/dq status from ESPN competitor data.
 // ESPN stores this in status.type.description/name, not c.score.
-function deriveOverallStatus(c) {
+// For the scoreboard endpoint, status is always {} so we infer from linescores.
+function deriveOverallStatus(c, linescores, maxRound) {
   const desc = (c.status?.type?.description ?? '').toUpperCase();
   const name = (c.status?.type?.name ?? '').toUpperCase();
   if (desc.includes('CUT') || name.includes('CUT')) return 'CUT';
   if (desc.includes('WITHDRAW') || desc === 'WD' || name.includes('WD')) return 'WD';
   if (desc === 'DQ' || name.includes('DQ')) return 'DQ';
   if (desc === 'MDF' || name.includes('MDF')) return 'MDF';
-  // Fallback: score string (handles edge cases)
+
+  // Infer from linescore data (required for this ESPN endpoint where status is always {})
+  if (linescores.length > 0) {
+    const playerMaxRound = Math.max(...linescores.map(ls => ls.period));
+    const allRoundsComplete = linescores.every(ls => (ls.linescores ?? []).length >= 18);
+    if (allRoundsComplete) {
+      if (maxRound >= 3 && playerMaxRound <= 2) return 'CUT';
+      if (maxRound >= 4 && playerMaxRound === 3) return 'MDF';
+    }
+  }
+
   return String(c.score ?? '').trim().toUpperCase();
 }
 
-function extractThru(c) {
+function extractThru(c, linescores) {
   if (c.status?.thru != null) return c.status.thru;
   const detail = c.status?.type?.shortDetail ?? '';
   // ESPN format: "-9 • T14" — T prefix + hole number
@@ -34,7 +45,17 @@ function extractThru(c) {
   if (/\b(F|Final)\b/i.test(detail)) return 'F';
   // State-based fallback: ESPN marks completed rounds as "post"
   if (c.status?.type?.state === 'post') return 'F';
-  return null;
+
+  // Fallback: count nested hole linescores in the latest round
+  if (linescores.length === 0) return null;
+  const latestRound = linescores.reduce(
+    (max, ls) => (ls.period > max.period ? ls : max),
+    linescores[0]
+  );
+  const holesPlayed = (latestRound.linescores ?? []).length;
+  if (holesPlayed === 0) return null;
+  if (holesPlayed >= 18) return 'F';
+  return holesPlayed;
 }
 
 async function fetchPlayerScores(espnTournamentId, status = '') {
@@ -52,18 +73,28 @@ async function fetchPlayerScores(espnTournamentId, status = '') {
   const json = await res.json();
   const competitors = json.events?.[0]?.competitions?.[0]?.competitors ?? [];
 
+  // First pass: determine how far the tournament has progressed
+  let maxRound = 0;
+  for (const c of competitors) {
+    for (const ls of c.linescores ?? []) {
+      if (ls.period > maxRound) maxRound = ls.period;
+    }
+  }
+
+  // Second pass: build scoreMap
   const scoreMap = new Map();
   for (const c of competitors) {
+    const linescores = c.linescores ?? [];
     const rounds = {};
-    for (const ls of c.linescores ?? []) {
+    for (const ls of linescores) {
       if (ls.period && ls.displayValue != null && ls.displayValue.trim() !== '') {
         rounds[ls.period] = ls.displayValue.trim();
       }
     }
     scoreMap.set(c.id, {
       rounds,
-      thru: extractThru(c),
-      overallStatus: deriveOverallStatus(c),
+      thru: extractThru(c, linescores),
+      overallStatus: deriveOverallStatus(c, linescores, maxRound),
     });
   }
 
