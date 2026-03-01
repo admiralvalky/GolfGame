@@ -9,6 +9,7 @@ export default {
           light: '#52b788',
           dark: '#1b4332',
           fairway: '#40916c',
+          gold: '#d97706',
         },
       },
     },

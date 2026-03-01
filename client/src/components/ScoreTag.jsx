@@ -15,15 +15,25 @@ export default function ScoreTag({ score, raw }) {
     return <span className="text-gray-400 text-sm font-mono">{raw ?? 'N/A'}</span>;
   }
 
-  let colorClass = 'text-gray-600';
-  let label = 'E';
   if (n < 0) {
-    colorClass = 'text-red-600 font-semibold';
-    label = String(n);
-  } else if (n > 0) {
-    colorClass = 'text-blue-600';
-    label = `+${n}`;
+    return (
+      <span className="bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-semibold font-mono text-sm">
+        {String(n)}
+      </span>
+    );
   }
 
-  return <span className={`font-mono text-sm ${colorClass}`}>{label}</span>;
+  if (n > 0) {
+    return (
+      <span className="bg-blue-50 text-blue-700 border border-blue-100 px-1.5 py-0.5 rounded font-mono text-sm">
+        +{n}
+      </span>
+    );
+  }
+
+  return (
+    <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono text-sm">
+      E
+    </span>
+  );
 }

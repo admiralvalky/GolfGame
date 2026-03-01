@@ -13,9 +13,9 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-golf-dark text-white shadow-lg">
+      <header className="bg-golf-dark text-white shadow-lg border-b-2 border-golf-fairway">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link to="/" className="text-xl font-bold tracking-tight flex items-center gap-2">
+          <Link to="/" className="text-xl font-extrabold tracking-wide flex items-center gap-2">
             ⛳ Golf Pool
           </Link>
           <nav className="flex gap-1 sm:gap-2">
@@ -25,8 +25,8 @@ export default function Layout({ children }) {
                 to={to}
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                   pathname === to
-                    ? 'bg-golf-light text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-golf-green'
+                    ? 'bg-white/20 text-white'
+                    : 'text-gray-300 hover:text-white hover:bg-white/10'
                 }`}
               >
                 {label}
@@ -40,7 +40,7 @@ export default function Layout({ children }) {
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6">{children}</main>
 
       <footer className="text-center text-xs text-gray-400 py-4 border-t border-gray-200">
-        Golf Pool App · Data via ESPN
+        Golf Pool · Data via ESPN
       </footer>
     </div>
   );

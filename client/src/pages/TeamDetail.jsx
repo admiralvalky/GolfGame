@@ -128,32 +128,42 @@ export default function TeamDetail() {
 
       {/* Score summary */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-center">
-          <div className="text-3xl font-bold mb-1">
-            {team.total === null ? '—' : (
-              <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
-            )}
-          </div>
-          <div className="text-xs text-gray-500">Team Score</div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-center">
-          <div className="text-3xl font-bold text-gray-700 mb-1">
-            {teamRank === 1 ? '🥇' : teamRank === 2 ? '🥈' : teamRank === 3 ? '🥉' : `#${teamRank}`}
-          </div>
-          <div className="text-xs text-gray-500">
-            of {allTeams.length} teams
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-center">
+          <div className="h-1 bg-golf-green" />
+          <div className="p-5">
+            <div className="text-3xl font-bold mb-1">
+              {team.total === null ? '—' : (
+                <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
+              )}
+            </div>
+            <div className="text-xs text-gray-500">Team Score</div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-center col-span-2 sm:col-span-1">
-          <div className="text-sm font-semibold text-gray-700 mb-1 truncate">
-            {tournament.name}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-center">
+          <div className="h-1 bg-golf-green" />
+          <div className="p-5">
+            <div className="text-3xl font-bold text-gray-700 mb-1">
+              {teamRank === 1 ? '🥇' : teamRank === 2 ? '🥈' : teamRank === 3 ? '🥉' : `#${teamRank}`}
+            </div>
+            <div className="text-xs text-gray-500">
+              of {allTeams.length} teams
+            </div>
           </div>
-          <div className="text-xs text-gray-500">{tournament.status}</div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-center col-span-2 sm:col-span-1">
+          <div className="h-1 bg-golf-green" />
+          <div className="p-5">
+            <div className="text-sm font-semibold text-gray-700 mb-1 truncate">
+              {tournament.name}
+            </div>
+            <div className="text-xs text-gray-500">{tournament.status}</div>
+          </div>
         </div>
       </div>
 
       {/* Round breakdown */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="h-1 bg-golf-green" />
         <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
           <span className="text-sm font-semibold text-gray-600">Round Breakdown</span>
         </div>
@@ -209,7 +219,7 @@ export default function TeamDetail() {
                 return (
                   <tr
                     key={player.player_espn_id}
-                    className={noEligible ? 'opacity-50' : ''}
+                    className={`even:bg-gray-50/60 ${noEligible ? 'opacity-50' : ''}`}
                   >
                     <td className="px-5 py-3 text-sm">
                       <span className={noEligible ? 'line-through text-gray-500' : 'text-gray-800 font-medium'}>

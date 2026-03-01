@@ -10,12 +10,18 @@ function RoundScore({ val }) {
   return <ScoreTag score={val} raw={val === 0 ? 'E' : String(val)} />;
 }
 
+function RankBadge({ rank }) {
+  if (rank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-400 text-white text-xs font-bold">1</span>;
+  if (rank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-300 text-gray-700 text-xs font-bold">2</span>;
+  if (rank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-orange-300 text-white text-xs font-bold">3</span>;
+  return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-gray-500 text-xs font-bold">{rank}</span>;
+}
+
 export default function Scoreboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tournaments, setTournaments] = useState([]);
   const [tournamentsLoading, setTournamentsLoading] = useState(true);
 
-  // Active tournament from URL param or default to first
   const activeTournamentId = searchParams.get('t');
 
   useEffect(() => {
@@ -46,6 +52,13 @@ export default function Scoreboard() {
       </div>
     );
   }
+
+  // Score bar calculation
+  const teams = data?.teams ?? [];
+  const totals = teams.map((t) => t.total).filter((v) => v !== null && v !== undefined);
+  const best = totals.length ? Math.min(...totals) : 0;
+  const worst = totals.length ? Math.max(...totals) : 0;
+  const range = worst - best || 1;
 
   return (
     <div className="space-y-6">
@@ -86,15 +99,15 @@ export default function Scoreboard() {
       {data && (
         <>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-600">
+            <div className="px-5 py-3 bg-golf-dark border-b border-gray-700 flex items-center justify-between">
+              <span className="text-sm font-semibold text-white">
                 {data.tournament?.name}
               </span>
               <span
                 className={`text-xs px-2 py-0.5 rounded-full ${
                   data.tournament?.status === 'in'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-500'
+                    ? 'bg-green-500/20 text-green-300'
+                    : 'bg-white/10 text-gray-300'
                 }`}
               >
                 {data.tournament?.status}
@@ -115,7 +128,7 @@ export default function Scoreboard() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[540px]">
                   <thead>
-                    <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                    <tr className="bg-golf-dark text-white text-xs uppercase tracking-wide">
                       <th className="text-left px-5 py-3 font-medium w-10">#</th>
                       <th className="text-left px-3 py-3 font-medium">Team</th>
                       <th className="text-right px-3 py-3 font-medium">R1</th>
@@ -126,43 +139,61 @@ export default function Scoreboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {data.teams.map((team, i) => (
-                      <tr
-                        key={team.team_id}
-                        className={`hover:bg-gray-50 transition-colors ${i === 0 ? 'bg-yellow-50/50' : ''}`}
-                      >
-                        <td className="px-5 py-3.5 text-sm font-bold text-gray-400">
-                          {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : team.rank}
-                        </td>
-                        <td className="px-3 py-3.5">
-                          <Link
-                            to={`/team/${team.team_id}?t=${activeTournamentId}`}
-                            className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
-                          >
-                            {team.team_name}
-                          </Link>
-                        </td>
-                        <td className="px-3 py-3.5 text-right text-sm">
-                          <RoundScore val={team.rounds?.[1]} />
-                        </td>
-                        <td className="px-3 py-3.5 text-right text-sm">
-                          <RoundScore val={team.rounds?.[2]} />
-                        </td>
-                        <td className="px-3 py-3.5 text-right text-sm">
-                          <RoundScore val={team.rounds?.[3]} />
-                        </td>
-                        <td className="px-3 py-3.5 text-right text-sm">
-                          <RoundScore val={team.rounds?.[4]} />
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          {team.total === null ? (
-                            <span className="text-gray-400 text-sm">—</span>
-                          ) : (
-                            <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {data.teams.map((team, i) => {
+                      const isLeader = i === 0;
+                      const barPct = team.total !== null
+                        ? Math.round(((worst - team.total) / range) * 100)
+                        : 0;
+                      return (
+                        <tr
+                          key={team.team_id}
+                          className={`hover:bg-gray-50 transition-colors ${
+                            isLeader
+                              ? 'bg-gradient-to-r from-amber-50 to-yellow-50/30 border-l-4 border-golf-gold'
+                              : ''
+                          }`}
+                        >
+                          <td className="px-5 py-3.5 text-sm">
+                            <RankBadge rank={i + 1} />
+                          </td>
+                          <td className="px-3 py-3.5">
+                            <Link
+                              to={`/team/${team.team_id}?t=${activeTournamentId}`}
+                              className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
+                            >
+                              {team.team_name}
+                            </Link>
+                          </td>
+                          <td className="px-3 py-3.5 text-right text-sm">
+                            <RoundScore val={team.rounds?.[1]} />
+                          </td>
+                          <td className="px-3 py-3.5 text-right text-sm">
+                            <RoundScore val={team.rounds?.[2]} />
+                          </td>
+                          <td className="px-3 py-3.5 text-right text-sm">
+                            <RoundScore val={team.rounds?.[3]} />
+                          </td>
+                          <td className="px-3 py-3.5 text-right text-sm">
+                            <RoundScore val={team.rounds?.[4]} />
+                          </td>
+                          <td className="px-5 py-3.5 text-right">
+                            {team.total === null ? (
+                              <span className="text-gray-400 text-sm">—</span>
+                            ) : (
+                              <div className="inline-flex flex-col items-end gap-1">
+                                <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
+                                <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-1 rounded-full bg-golf-green"
+                                    style={{ width: `${barPct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

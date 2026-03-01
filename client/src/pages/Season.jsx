@@ -5,6 +5,13 @@ import { useAutoRefresh } from '../hooks/useAutoRefresh.js';
 import LastUpdated from '../components/LastUpdated.jsx';
 import ScoreTag from '../components/ScoreTag.jsx';
 
+function RankBadge({ rank }) {
+  if (rank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-400 text-white text-xs font-bold">1</span>;
+  if (rank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-300 text-gray-700 text-xs font-bold">2</span>;
+  if (rank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-orange-300 text-white text-xs font-bold">3</span>;
+  return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-gray-500 text-xs font-bold">{rank}</span>;
+}
+
 export default function Season() {
   const fetchStandings = useCallback(() => getSeasonStandings(), []);
   const { data, loading, error, lastUpdated, refresh } = useAutoRefresh(fetchStandings);
@@ -52,7 +59,7 @@ export default function Season() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="w-full min-w-[500px]">
           <thead>
-            <tr className="text-xs text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
+            <tr className="bg-golf-dark text-white text-xs uppercase tracking-wide">
               <th className="text-left px-5 py-3 font-medium w-10">#</th>
               <th className="text-left px-3 py-3 font-medium">Team</th>
               {tournaments.map((t) => (
@@ -63,7 +70,7 @@ export default function Season() {
                 >
                   <Link
                     to={`/scoreboard?t=${t.id}`}
-                    className="hover:text-golf-green transition-colors truncate block max-w-[80px] ml-auto"
+                    className="hover:text-golf-light transition-colors truncate block max-w-[80px] ml-auto"
                   >
                     {t.name.length > 12 ? t.name.slice(0, 12) + '…' : t.name}
                   </Link>
@@ -76,10 +83,14 @@ export default function Season() {
             {teams.map((team, i) => (
               <tr
                 key={team.team_id}
-                className={`hover:bg-gray-50 transition-colors ${i === 0 ? 'bg-yellow-50/50' : ''}`}
+                className={`hover:bg-gray-50 transition-colors ${
+                  i === 0
+                    ? 'bg-gradient-to-r from-amber-50 to-yellow-50/30 border-l-4 border-golf-gold'
+                    : ''
+                }`}
               >
-                <td className="px-5 py-3.5 text-sm font-bold text-gray-400">
-                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : team.rank}
+                <td className="px-5 py-3.5 text-sm">
+                  <RankBadge rank={i + 1} />
                 </td>
                 <td className="px-3 py-3.5 font-semibold text-sm text-gray-800">
                   {team.team_name}

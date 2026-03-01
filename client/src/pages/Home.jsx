@@ -29,9 +29,12 @@ export default function Home() {
   return (
     <div className="space-y-8">
       {/* Hero */}
-      <div className="bg-gradient-to-r from-golf-dark to-golf-green rounded-2xl p-8 text-white text-center shadow-lg">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-2">⛳ Golf Pool</h1>
-        <p className="text-golf-light text-sm">
+      <div className="relative bg-gradient-to-br from-golf-dark via-golf-green to-golf-fairway rounded-2xl p-8 text-white text-center shadow-lg overflow-hidden">
+        <span className="absolute inset-0 flex items-center justify-center text-[8rem] opacity-5 pointer-events-none select-none">
+          ⛳
+        </span>
+        <h1 className="relative text-3xl sm:text-4xl font-bold mb-2">⛳ Golf Pool</h1>
+        <p className="relative text-golf-light font-semibold text-sm tracking-wide">
           Pick 6 players · Best 2 scores count · Lowest total wins
         </p>
       </div>
@@ -57,9 +60,11 @@ export default function Home() {
           <Link
             key={label}
             to={to}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-golf-light transition-all text-center"
+            className="group bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-golf-light hover:-translate-y-0.5 transition-all text-center"
           >
-            <div className="text-2xl mb-1">{icon}</div>
+            <div className="bg-golf-green/10 rounded-xl w-10 h-10 flex items-center justify-center mx-auto mb-2 text-2xl">
+              {icon}
+            </div>
             <div className="font-semibold text-sm text-gray-800">{label}</div>
             <div className="text-xs text-gray-400 mt-0.5 truncate">{desc}</div>
           </Link>
@@ -68,7 +73,7 @@ export default function Home() {
 
       {/* Current State */}
       <div className="grid sm:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-golf-green p-5">
           <h2 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
             🏌️ Saved Tournaments
             <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
@@ -104,7 +109,7 @@ export default function Home() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-golf-green p-5">
           <h2 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
             👥 Teams
             <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
