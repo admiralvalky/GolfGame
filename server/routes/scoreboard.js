@@ -14,7 +14,8 @@ async function fetchPlayerScores(espnTournamentId) {
   const cached = scoreCache.get(espnTournamentId);
   if (cached && cached.expiresAt > now) return cached.data;
 
-  const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard?event=${espnTournamentId}`;
+  // Use scoreboard endpoint with event filter — more reliable than /leaderboard
+  const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${espnTournamentId}`;
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)' },
   });
@@ -25,10 +26,8 @@ async function fetchPlayerScores(espnTournamentId) {
 
   const scoreMap = new Map();
   for (const c of competitors) {
-    const statusName = c.status?.type?.name ?? '';
-    const isCut = ['cut', 'wd', 'dq', 'mdf', 'w/d'].includes(statusName.toLowerCase());
-    const score = isCut ? statusName.toUpperCase() : (c.score?.displayValue ?? 'E');
-    scoreMap.set(c.id, score);
+    // score is a plain string: "-13", "+2", "E", "CUT", "WD", etc.
+    scoreMap.set(c.id, String(c.score ?? 'E'));
   }
 
   scoreCache.set(espnTournamentId, { data: scoreMap, expiresAt: now + CACHE_TTL_MS });

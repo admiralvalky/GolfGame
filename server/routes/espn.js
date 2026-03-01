@@ -52,30 +52,33 @@ router.get('/tournaments', async (req, res) => {
 
 /**
  * GET /api/espn/tournaments/:id/players
- * Returns players + current scores for a specific tournament
+ * Returns players + current scores for a specific tournament.
+ * Uses the scoreboard endpoint with ?event= filter — the leaderboard endpoint
+ * is unreliable; scoreboard always has the active competition data.
  */
 router.get('/tournaments/:id/players', async (req, res) => {
   try {
     const { id } = req.params;
     const data = await cachedFetch(
-      `https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard?event=${id}`
+      `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${id}`
     );
 
     const competitors = data.events?.[0]?.competitions?.[0]?.competitors ?? [];
 
     const players = competitors.map((c) => {
-      const scoreVal = c.score?.displayValue ?? 'E';
-      const statusName = c.status?.type?.name ?? '';
-      const isCut = ['cut', 'wd', 'dq', 'mdf'].includes(statusName.toLowerCase());
+      // score is a plain string: "-13", "+2", "E", "CUT", "WD", etc.
+      const scoreVal = String(c.score ?? 'E');
 
       return {
         id: c.id,
-        name: c.athlete?.displayName ?? c.displayName ?? 'Unknown',
-        score: isCut ? statusName.toUpperCase() : scoreVal,
-        status: statusName,
-        position: c.status?.position?.displayName ?? c.standing?.displayValue ?? '',
+        name: c.athlete?.displayName ?? 'Unknown',
+        score: scoreVal,
+        order: c.order ?? 999,
       };
     });
+
+    // Sort by order (leaderboard position)
+    players.sort((a, b) => a.order - b.order);
 
     res.json({ players, tournamentId: id });
   } catch (err) {
