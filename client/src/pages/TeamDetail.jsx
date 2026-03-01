@@ -34,7 +34,7 @@ function RoundCell({ raw, counting, isCut }) {
     <span
       className={`inline-block text-sm font-mono px-1 rounded ${
         counting
-          ? 'bg-green-800 text-white font-semibold'
+          ? 'bg-green-800 text-white font-semibold border border-black'
           : isNum && numeric > 0
           ? 'text-red-600'
           : 'text-gray-900'
@@ -263,18 +263,25 @@ export default function TeamDetail() {
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
-                <th className="text-center px-3 py-3 font-medium">Pos</th>
+                <th className="text-center px-3 py-3 font-medium" style={{fontSize:'10px'}}>Pos</th>
                 <th className="text-left px-5 py-3 font-medium">Player</th>
-                <th className="text-center px-3 py-3 font-medium">Thru</th>
-                <th className="text-center px-3 py-3 font-medium">R1</th>
+                <th className="text-center pl-1 pr-3 py-3 font-medium" style={{fontSize:'10px'}}>Thru</th>
+                <th className="text-center px-3 py-3 font-medium border-l border-gray-300">R1</th>
                 <th className="text-center px-3 py-3 font-medium">R2</th>
                 <th className="text-center px-3 py-3 font-medium">R3</th>
                 <th className="text-center px-3 py-3 font-medium">R4</th>
-                <th className="text-center px-3 py-3 font-medium">Total</th>
+                <th className="text-center px-3 py-3 font-medium border-l border-gray-300">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {team.players?.map((player) => {
+              {[...(team.players ?? [])].sort((a, b) => {
+                const ta = playerTotal(a.rounds);
+                const tb = playerTotal(b.rounds);
+                if (ta === null && tb === null) return 0;
+                if (ta === null) return 1;
+                if (tb === null) return -1;
+                return ta - tb;
+              }).map((player) => {
                 const noEligible = player.eligible_rounds?.length === 0;
                 const isCut = CUT_STATUSES.includes(player.overallStatus?.toUpperCase() ?? '');
                 return (
@@ -282,7 +289,7 @@ export default function TeamDetail() {
                     key={player.player_espn_id}
                     className={`even:bg-gray-50/60 ${noEligible ? 'opacity-50' : ''}`}
                   >
-                    <td className="px-3 py-3 text-center text-xs font-mono text-gray-500 whitespace-nowrap">
+                    <td className="px-3 py-3 text-center font-mono text-gray-500 whitespace-nowrap" style={{fontSize:'10px'}}>
                       {isCut
                         ? <span className="text-gray-400">CUT</span>
                         : player.rank ?? '—'}
@@ -292,15 +299,15 @@ export default function TeamDetail() {
                         {player.player_name}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-center text-sm text-gray-600">
+                    <td className="pl-1 pr-3 py-3 text-center font-mono text-gray-500" style={{fontSize:'10px'}}>
                       {isCut
-                        ? <span className="text-xs text-gray-400 font-medium">CUT</span>
+                        ? 'CUT'
                         : player.thru != null
                         ? player.thru
                         : '—'}
                     </td>
                     {[1, 2, 3, 4].map((r) => (
-                      <td key={r} className="px-3 py-3 text-center">
+                      <td key={r} className={`px-3 py-3 text-center${r === 1 ? ' border-l border-gray-300' : ''}`}>
                         <RoundCell
                           raw={player.rounds?.[r]}
                           counting={player.counting_rounds?.includes(r)}
@@ -308,7 +315,7 @@ export default function TeamDetail() {
                         />
                       </td>
                     ))}
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-3 text-center border-l border-gray-300">
                       {noEligible ? (
                         <span className="text-gray-300 text-sm">—</span>
                       ) : (
