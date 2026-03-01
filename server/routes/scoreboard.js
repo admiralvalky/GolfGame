@@ -32,7 +32,10 @@ async function fetchPlayerScores(espnTournamentId) {
         rounds[ls.period] = ls.displayValue.trim();
       }
     }
-    scoreMap.set(c.id, { rounds });
+    scoreMap.set(c.id, {
+      rounds,
+      thru: c.status?.thru ?? null,
+    });
   }
 
   scoreCache.set(espnTournamentId, { data: scoreMap, expiresAt: now + CACHE_TTL_MS });

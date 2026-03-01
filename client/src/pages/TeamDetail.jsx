@@ -17,19 +17,30 @@ function RoundCell({ raw, counting }) {
     <span
       className={`inline-block text-sm font-mono ${
         counting
-          ? 'ring-2 ring-golf-green rounded px-1'
-          : ''
-      } ${
-        isNum && numeric < 0
-          ? 'text-red-600'
+          ? 'text-golf-green font-semibold ring-2 ring-golf-green rounded px-1'
           : isNum && numeric > 0
-          ? 'text-blue-600'
-          : 'text-gray-700'
+          ? 'text-red-600'
+          : 'text-gray-900'
       }`}
     >
       {raw}
     </span>
   );
+}
+
+function playerTotal(rounds) {
+  let sum = null;
+  for (let r = 1; r <= 4; r++) {
+    const raw = rounds?.[r];
+    if (raw == null) continue;
+    const s = String(raw).trim().toUpperCase();
+    const n = s === 'E' ? 0 : parseInt(s, 10);
+    if (!isNaN(n)) {
+      if (sum === null) sum = 0;
+      sum += n;
+    }
+  }
+  return sum;
 }
 
 export default function TeamDetail() {
@@ -203,14 +214,16 @@ export default function TeamDetail() {
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[480px]">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
                 <th className="text-left px-5 py-3 font-medium">Player</th>
+                <th className="text-center px-3 py-3 font-medium">Thru</th>
                 <th className="text-center px-3 py-3 font-medium">R1</th>
                 <th className="text-center px-3 py-3 font-medium">R2</th>
                 <th className="text-center px-3 py-3 font-medium">R3</th>
                 <th className="text-center px-3 py-3 font-medium">R4</th>
+                <th className="text-center px-3 py-3 font-medium">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -226,6 +239,9 @@ export default function TeamDetail() {
                         {player.player_name}
                       </span>
                     </td>
+                    <td className="px-3 py-3 text-center text-sm text-gray-600">
+                      {player.thru != null ? player.thru : '—'}
+                    </td>
                     {[1, 2, 3, 4].map((r) => (
                       <td key={r} className="px-3 py-3 text-center">
                         <RoundCell
@@ -234,6 +250,13 @@ export default function TeamDetail() {
                         />
                       </td>
                     ))}
+                    <td className="px-3 py-3 text-center">
+                      {noEligible ? (
+                        <span className="text-gray-300 text-sm">—</span>
+                      ) : (
+                        <RoundScore val={playerTotal(player.rounds)} />
+                      )}
+                    </td>
                   </tr>
                 );
               })}
