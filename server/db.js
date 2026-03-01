@@ -3,7 +3,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const db = new Database(join(__dirname, 'golf.db'));
+const dataDir = process.env.DATA_DIR ?? __dirname;
+const db = new Database(join(dataDir, 'golf.db'));
 
 // Enable WAL mode for better performance
 db.pragma('journal_mode = WAL');
