@@ -11,7 +11,7 @@ function TeamScoreCell({ val, className = '' }) {
   }
   const isOver = val > 0;
   return (
-    <span className={`inline-block font-semibold font-mono px-2 py-0.5 rounded ${
+    <span className={`inline-block font-semibold font-mono px-2 py-0.5 rounded border border-gray-800 ${
       isOver
         ? 'bg-red-50 text-red-800'
         : 'bg-green-100 text-gray-900'

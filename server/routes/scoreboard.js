@@ -8,6 +8,19 @@ const router = Router();
 // In-memory ESPN score cache (shared TTL — 10 min live, 24 h for completed)
 const scoreCache = new Map();
 
+// Derive a normalized cut/wd/dq status from ESPN competitor data.
+// ESPN stores this in status.type.description/name, not c.score.
+function deriveOverallStatus(c) {
+  const desc = (c.status?.type?.description ?? '').toUpperCase();
+  const name = (c.status?.type?.name ?? '').toUpperCase();
+  if (desc.includes('CUT') || name.includes('CUT')) return 'CUT';
+  if (desc.includes('WITHDRAW') || desc === 'WD' || name.includes('WD')) return 'WD';
+  if (desc === 'DQ' || name.includes('DQ')) return 'DQ';
+  if (desc === 'MDF' || name.includes('MDF')) return 'MDF';
+  // Fallback: score string (handles edge cases)
+  return String(c.score ?? '').trim().toUpperCase();
+}
+
 function extractThru(c) {
   if (c.status?.thru != null) return c.status.thru;
   const detail = c.status?.type?.shortDetail ?? '';
@@ -17,8 +30,10 @@ function extractThru(c) {
   // Fallback: "Thru 14" or "9 Thru 14"
   const thruMatch = detail.match(/Thru\s+(\d+)/i);
   if (thruMatch) return Number(thruMatch[1]);
-  // Finished: "F" or "-9 • F"
-  if (/\bF\b/i.test(detail)) return 'F';
+  // Finished: "F", "-9 • F", "Final", etc.
+  if (/\b(F|Final)\b/i.test(detail)) return 'F';
+  // State-based fallback: ESPN marks completed rounds as "post"
+  if (c.status?.type?.state === 'post') return 'F';
   return null;
 }
 
@@ -48,7 +63,7 @@ async function fetchPlayerScores(espnTournamentId, status = '') {
     scoreMap.set(c.id, {
       rounds,
       thru: extractThru(c),
-      overallStatus: String(c.score ?? '').trim().toUpperCase(),
+      overallStatus: deriveOverallStatus(c),
     });
   }
 
