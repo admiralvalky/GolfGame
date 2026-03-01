@@ -263,6 +263,7 @@ export default function TeamDetail() {
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
+                <th className="text-center px-3 py-3 font-medium">Pos</th>
                 <th className="text-left px-5 py-3 font-medium">Player</th>
                 <th className="text-center px-3 py-3 font-medium">Thru</th>
                 <th className="text-center px-3 py-3 font-medium">R1</th>
@@ -281,6 +282,11 @@ export default function TeamDetail() {
                     key={player.player_espn_id}
                     className={`even:bg-gray-50/60 ${noEligible ? 'opacity-50' : ''}`}
                   >
+                    <td className="px-3 py-3 text-center text-xs font-mono text-gray-500 whitespace-nowrap">
+                      {isCut
+                        ? <span className="text-gray-400">CUT</span>
+                        : player.rank ?? '—'}
+                    </td>
                     <td className="px-5 py-3 text-sm">
                       <span className={noEligible ? 'line-through text-gray-500' : 'text-gray-800 font-medium'}>
                         {player.player_name}

@@ -25,12 +25,14 @@ export function computeTeamScoreByRound(picks, playerScoresMap) {
     const rounds = entry?.rounds ?? {};
     const thru = entry?.thru ?? null;
     const overallStatus = entry?.overallStatus ?? '';
+    const rank = entry?.rank ?? null;
     return {
       player_espn_id: pick.player_espn_id,
       player_name: pick.player_name,
       rounds, // raw strings keyed by round number
       thru,
       overallStatus,
+      rank,
     };
   });
 

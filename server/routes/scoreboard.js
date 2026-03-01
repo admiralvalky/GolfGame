@@ -95,7 +95,27 @@ async function fetchPlayerScores(espnTournamentId, status = '') {
       rounds,
       thru: extractThru(c, linescores),
       overallStatus: deriveOverallStatus(c, linescores, maxRound),
+      totalScore: String(c.score ?? '').trim(),
     });
+  }
+
+  // Third pass: compute display ranks (e.g. "1", "T4") for active players
+  const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF']);
+  const active = [];
+  for (const [id, data] of scoreMap) {
+    if (!CUT_STATUSES.has(data.overallStatus)) {
+      const s = data.totalScore.toUpperCase();
+      const n = s === 'E' ? 0 : parseInt(s, 10);
+      if (!isNaN(n)) active.push({ id, score: n });
+    }
+  }
+  active.sort((a, b) => a.score - b.score);
+  for (let i = 0; i < active.length; ) {
+    let j = i;
+    while (j < active.length && active[j].score === active[i].score) j++;
+    const display = j - i > 1 ? `T${i + 1}` : String(i + 1);
+    for (let k = i; k < j; k++) scoreMap.get(active[k].id).rank = display;
+    i = j;
   }
 
   const TTL = status === 'post' ? 24 * 60 * 60 * 1000 : 10 * 60 * 1000;
