@@ -26,6 +26,7 @@ export function useAutoRefresh(fetchFn, intervalMs = 10 * 60 * 1000) {
   useEffect(() => {
     setLoading(true);
     refresh();
+    if (intervalMs === null) return;
     const interval = setInterval(refresh, intervalMs);
     return () => clearInterval(interval);
   }, [refresh, intervalMs]);

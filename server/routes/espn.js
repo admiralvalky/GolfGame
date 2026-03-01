@@ -39,6 +39,7 @@ router.get('/tournaments', async (req, res) => {
       name: e.name,
       shortName: e.shortName,
       startDate: e.date,
+      endDate: e.endDate ?? null,
       status: e.status?.type?.name ?? 'unknown',
       statusDetail: e.status?.type?.detail ?? '',
     }));

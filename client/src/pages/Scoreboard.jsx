@@ -4,6 +4,7 @@ import { getTournaments, getScoreboard } from '../api.js';
 import { useAutoRefresh } from '../hooks/useAutoRefresh.js';
 import LastUpdated from '../components/LastUpdated.jsx';
 import ScoreTag from '../components/ScoreTag.jsx';
+import { formatTournamentDates, statusLabel } from '../utils/tournament.js';
 
 function RoundScore({ val }) {
   if (val === null || val === undefined) return <span className="text-gray-300">—</span>;
@@ -33,12 +34,29 @@ export default function Scoreboard() {
     }).finally(() => setTournamentsLoading(false));
   }, []);
 
+  const activeTournament = tournaments.find(t => String(t.id) === String(activeTournamentId));
+
+  function shouldAutoRefresh(tournament) {
+    if (!tournament) return false;
+    const now = new Date();
+    const windowStart = new Date(tournament.start_date);
+    windowStart.setDate(windowStart.getDate() - 1);
+    const endBase = tournament.end_date
+      ? new Date(tournament.end_date)
+      : (() => { const d = new Date(tournament.start_date); d.setDate(d.getDate() + 3); return d; })();
+    const windowEnd = new Date(endBase);
+    windowEnd.setDate(windowEnd.getDate() + 1);
+    return now >= windowStart && now <= windowEnd;
+  }
+
+  const intervalMs = shouldAutoRefresh(activeTournament) ? 10 * 60 * 1000 : null;
+
   const fetchScoreboard = useCallback(() => {
     if (!activeTournamentId) return Promise.resolve(null);
     return getScoreboard(activeTournamentId);
   }, [activeTournamentId]);
 
-  const { data, loading, error, lastUpdated, refresh } = useAutoRefresh(fetchScoreboard);
+  const { data, loading, error, lastUpdated, refresh } = useAutoRefresh(fetchScoreboard, intervalMs);
 
   if (tournamentsLoading) {
     return <div className="flex items-center justify-center h-48 text-gray-400">Loading…</div>;
@@ -100,17 +118,18 @@ export default function Scoreboard() {
         <>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-3 bg-golf-dark border-b border-gray-700 flex items-center justify-between">
-              <span className="text-sm font-semibold text-white">
-                {data.tournament?.name}
-              </span>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full ${
-                  data.tournament?.status === 'in'
-                    ? 'bg-green-500/20 text-green-300'
-                    : 'bg-white/10 text-gray-300'
-                }`}
-              >
-                {data.tournament?.status}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold text-white">
+                  {data.tournament?.name}
+                </span>
+                <span className="text-xs text-gray-300">{formatTournamentDates(data.tournament)}</span>
+              </div>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                statusLabel(data.tournament?.status) === 'Live'
+                  ? 'bg-green-500/20 text-green-300'
+                  : 'bg-white/10 text-gray-300'
+              }`}>
+                {statusLabel(data.tournament?.status)}
               </span>
             </div>
 
@@ -142,7 +161,7 @@ export default function Scoreboard() {
                     {data.teams.map((team, i) => {
                       const isLeader = i === 0;
                       const barPct = team.total !== null
-                        ? Math.round(((worst - team.total) / range) * 100)
+                        ? Math.round(((team.total - best) / range) * 100)
                         : 0;
                       return (
                         <tr

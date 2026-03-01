@@ -5,11 +5,19 @@ import { computeTeamScoreByRound } from '../scoring.js';
 
 const router = Router();
 
-// In-memory ESPN score cache (shared 10-min TTL)
+// In-memory ESPN score cache (shared TTL — 10 min live, 24 h for completed)
 const scoreCache = new Map();
-const CACHE_TTL_MS = 10 * 60 * 1000;
 
-async function fetchPlayerScores(espnTournamentId) {
+function extractThru(c) {
+  if (c.status?.thru != null) return c.status.thru;
+  const detail = c.status?.type?.shortDetail ?? '';
+  const thruMatch = detail.match(/Thru\s+(\d+)/i);
+  if (thruMatch) return Number(thruMatch[1]);
+  if (/^\s*F\b/i.test(detail)) return 'F';
+  return null;
+}
+
+async function fetchPlayerScores(espnTournamentId, status = '') {
   const now = Date.now();
   const cached = scoreCache.get(espnTournamentId);
   if (cached && cached.expiresAt > now) return cached.data;
@@ -34,11 +42,12 @@ async function fetchPlayerScores(espnTournamentId) {
     }
     scoreMap.set(c.id, {
       rounds,
-      thru: c.status?.thru ?? null,
+      thru: extractThru(c),
     });
   }
 
-  scoreCache.set(espnTournamentId, { data: scoreMap, expiresAt: now + CACHE_TTL_MS });
+  const TTL = status === 'post' ? 24 * 60 * 60 * 1000 : 10 * 60 * 1000;
+  scoreCache.set(espnTournamentId, { data: scoreMap, expiresAt: now + TTL });
   return scoreMap;
 }
 
@@ -69,7 +78,7 @@ router.get('/:tournamentId', async (req, res) => {
 
   let playerScores;
   try {
-    playerScores = await fetchPlayerScores(tournament.espn_tournament_id);
+    playerScores = await fetchPlayerScores(tournament.espn_tournament_id, tournament.status);
   } catch (err) {
     console.error('Failed to fetch ESPN scores:', err.message);
     return res.status(502).json({ error: 'Failed to fetch live scores from ESPN' });
@@ -136,7 +145,7 @@ router.get('/season/standings', async (req, res) => {
 
     let playerScores;
     try {
-      playerScores = await fetchPlayerScores(tournament.espn_tournament_id);
+      playerScores = await fetchPlayerScores(tournament.espn_tournament_id, tournament.status);
     } catch (err) {
       console.error(`Failed scores for tournament ${tournament.id}:`, err.message);
       tournamentResults.push({ tournament, scores: {} });

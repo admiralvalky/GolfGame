@@ -71,6 +71,7 @@ export default function Setup() {
       espn_tournament_id: t.id,
       name: t.name,
       start_date: t.startDate,
+      end_date: t.endDate ?? null,
       status: t.status,
     });
     await loadTournaments();

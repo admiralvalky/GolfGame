@@ -46,4 +46,8 @@ db.exec(`
   );
 `);
 
+try {
+  db.exec(`ALTER TABLE tournaments ADD COLUMN end_date TEXT`);
+} catch (_) { /* column already exists */ }
+
 export default db;

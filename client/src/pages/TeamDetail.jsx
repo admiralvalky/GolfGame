@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { getScoreboard, getTournaments } from '../api.js';
 import ScoreTag from '../components/ScoreTag.jsx';
+import { formatTournamentDates, statusLabel } from '../utils/tournament.js';
 
 function RoundScore({ val }) {
   if (val === null || val === undefined) return <span className="text-gray-300">—</span>;
@@ -167,7 +168,18 @@ export default function TeamDetail() {
             <div className="text-sm font-semibold text-gray-700 mb-1 truncate">
               {tournament.name}
             </div>
-            <div className="text-xs text-gray-500">{tournament.status}</div>
+            <div className="text-xs text-gray-500">
+              {formatTournamentDates(tournament)}
+            </div>
+            <div className="text-xs mt-0.5">
+              <span className={`px-1.5 py-0.5 rounded-full ${
+                statusLabel(tournament.status) === 'Live'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-gray-100 text-gray-500'
+              }`}>
+                {statusLabel(tournament.status)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
