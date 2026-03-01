@@ -12,6 +12,78 @@ export function parseScore(scoreStr) {
 }
 
 /**
+ * Compute a team's score per round using per-round ESPN linescore data.
+ *
+ * @param {Array<{player_espn_id: string, player_name: string}>} picks
+ * @param {Map<string, {rounds: Record<number, string>}>} playerScoresMap
+ * @returns {{ rounds: Object, total: number|null, players: Array }}
+ */
+export function computeTeamScoreByRound(picks, playerScoresMap) {
+  // Build per-player round data
+  const players = picks.map((pick) => {
+    const entry = playerScoresMap.get(pick.player_espn_id);
+    const rounds = entry?.rounds ?? {};
+    return {
+      player_espn_id: pick.player_espn_id,
+      player_name: pick.player_name,
+      rounds, // raw strings keyed by round number
+    };
+  });
+
+  const roundResults = {};
+  let total = null;
+  const countingByRound = {}; // round → Set of espn_ids
+
+  for (let r = 1; r <= 4; r++) {
+    // Collect eligible players for this round
+    const eligible = [];
+    for (const p of players) {
+      const raw = p.rounds[r];
+      const score = parseScore(raw);
+      if (score !== null) {
+        eligible.push({ player_espn_id: p.player_espn_id, score });
+      }
+    }
+
+    if (eligible.length === 0) {
+      // Round not yet played or no data
+      roundResults[r] = { score: null, players: [] };
+      countingByRound[r] = new Set();
+      continue;
+    }
+
+    eligible.sort((a, b) => a.score - b.score);
+    const counting = eligible.slice(0, 2);
+    const roundScore = counting.reduce((sum, p) => sum + p.score, 0);
+
+    roundResults[r] = { score: roundScore, players: counting.map((p) => p.player_espn_id) };
+    countingByRound[r] = new Set(counting.map((p) => p.player_espn_id));
+
+    if (total === null) total = 0;
+    total += roundScore;
+  }
+
+  // Annotate players with counting_rounds and eligible_rounds
+  const annotatedPlayers = players.map((p) => {
+    const eligible_rounds = [];
+    const counting_rounds = [];
+    for (let r = 1; r <= 4; r++) {
+      const raw = p.rounds[r];
+      const score = parseScore(raw);
+      if (score !== null) {
+        eligible_rounds.push(r);
+        if (countingByRound[r]?.has(p.player_espn_id)) {
+          counting_rounds.push(r);
+        }
+      }
+    }
+    return { ...p, counting_rounds, eligible_rounds };
+  });
+
+  return { rounds: roundResults, total, players: annotatedPlayers };
+}
+
+/**
  * Compute a team's score for a tournament given a map of player scores.
  *
  * @param {Array<{player_espn_id: string, player_name: string}>} picks - team's 6 picks

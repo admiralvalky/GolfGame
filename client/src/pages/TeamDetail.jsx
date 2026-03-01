@@ -3,6 +3,35 @@ import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { getScoreboard, getTournaments } from '../api.js';
 import ScoreTag from '../components/ScoreTag.jsx';
 
+function RoundScore({ val }) {
+  if (val === null || val === undefined) return <span className="text-gray-300">—</span>;
+  return <ScoreTag score={val} raw={val === 0 ? 'E' : String(val)} />;
+}
+
+function RoundCell({ raw, counting }) {
+  if (raw == null) return <span className="text-gray-300 text-sm">—</span>;
+  const s = String(raw).trim().toUpperCase();
+  const numeric = s === 'E' ? 0 : parseInt(s, 10);
+  const isNum = !isNaN(numeric);
+  return (
+    <span
+      className={`inline-block text-sm font-mono ${
+        counting
+          ? 'ring-2 ring-golf-green rounded px-1'
+          : ''
+      } ${
+        isNum && numeric < 0
+          ? 'text-red-600'
+          : isNum && numeric > 0
+          ? 'text-blue-600'
+          : 'text-gray-700'
+      }`}
+    >
+      {raw}
+    </span>
+  );
+}
+
 export default function TeamDetail() {
   const { teamId } = useParams();
   const [searchParams] = useSearchParams();
@@ -101,8 +130,8 @@ export default function TeamDetail() {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-center">
           <div className="text-3xl font-bold mb-1">
-            {team.score === null ? '—' : (
-              <ScoreTag score={team.score} raw={team.score === 0 ? 'E' : String(team.score)} />
+            {team.total === null ? '—' : (
+              <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
             )}
           </div>
           <div className="text-xs text-gray-500">Team Score</div>
@@ -123,54 +152,83 @@ export default function TeamDetail() {
         </div>
       </div>
 
-      {/* Player cards */}
+      {/* Round breakdown */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+          <span className="text-sm font-semibold text-gray-600">Round Breakdown</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[360px]">
+            <thead>
+              <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                <th className="text-left px-5 py-3 font-medium">R1</th>
+                <th className="text-left px-5 py-3 font-medium">R2</th>
+                <th className="text-left px-5 py-3 font-medium">R3</th>
+                <th className="text-left px-5 py-3 font-medium">R4</th>
+                <th className="text-left px-5 py-3 font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {[1, 2, 3, 4].map((r) => (
+                  <td key={r} className="px-5 py-3">
+                    <RoundScore val={team.rounds?.[r]} />
+                  </td>
+                ))}
+                <td className="px-5 py-3">
+                  <RoundScore val={team.total} />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Player table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
           <span className="text-sm font-semibold text-gray-600">Picked Players</span>
           <span className="ml-2 text-xs text-gray-400">
-            (highlighted = counting toward team score)
+            (green ring = counting toward round score)
           </span>
         </div>
-        <div className="divide-y divide-gray-50">
-          {team.players?.map((player) => (
-            <div
-              key={player.player_espn_id}
-              className={`flex items-center justify-between px-5 py-3.5 ${
-                player.counting ? 'bg-golf-green/5' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                {player.counting ? (
-                  <span className="w-6 h-6 rounded-full bg-golf-green text-white text-xs flex items-center justify-center">
-                    ★
-                  </span>
-                ) : (
-                  <span className="w-6 h-6 rounded-full border border-gray-200" />
-                )}
-                <span
-                  className={`text-sm font-medium ${
-                    !player.eligible ? 'text-gray-400 line-through' : 'text-gray-800'
-                  }`}
-                >
-                  {player.player_name}
-                </span>
-                {!player.eligible && (
-                  <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                    {player.raw_score}
-                  </span>
-                )}
-              </div>
-              <div className="text-right">
-                {player.eligible ? (
-                  <ScoreTag score={player.score} raw={player.raw_score} />
-                ) : (
-                  <span className="text-gray-400 text-sm font-mono line-through">
-                    {player.raw_score}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px]">
+            <thead>
+              <tr className="text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
+                <th className="text-left px-5 py-3 font-medium">Player</th>
+                <th className="text-center px-3 py-3 font-medium">R1</th>
+                <th className="text-center px-3 py-3 font-medium">R2</th>
+                <th className="text-center px-3 py-3 font-medium">R3</th>
+                <th className="text-center px-3 py-3 font-medium">R4</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {team.players?.map((player) => {
+                const noEligible = player.eligible_rounds?.length === 0;
+                return (
+                  <tr
+                    key={player.player_espn_id}
+                    className={noEligible ? 'opacity-50' : ''}
+                  >
+                    <td className="px-5 py-3 text-sm">
+                      <span className={noEligible ? 'line-through text-gray-500' : 'text-gray-800 font-medium'}>
+                        {player.player_name}
+                      </span>
+                    </td>
+                    {[1, 2, 3, 4].map((r) => (
+                      <td key={r} className="px-3 py-3 text-center">
+                        <RoundCell
+                          raw={player.rounds?.[r]}
+                          counting={player.counting_rounds?.includes(r)}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

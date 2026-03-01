@@ -5,6 +5,11 @@ import { useAutoRefresh } from '../hooks/useAutoRefresh.js';
 import LastUpdated from '../components/LastUpdated.jsx';
 import ScoreTag from '../components/ScoreTag.jsx';
 
+function RoundScore({ val }) {
+  if (val === null || val === undefined) return <span className="text-gray-300">—</span>;
+  return <ScoreTag score={val} raw={val === 0 ? 'E' : String(val)} />;
+}
+
 export default function Scoreboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tournaments, setTournaments] = useState([]);
@@ -107,63 +112,60 @@ export default function Scoreboard() {
                 </Link>
               </div>
             ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="text-xs text-gray-500 uppercase tracking-wide">
-                    <th className="text-left px-5 py-3 font-medium w-10">#</th>
-                    <th className="text-left px-3 py-3 font-medium">Team</th>
-                    <th className="text-right px-5 py-3 font-medium">Score</th>
-                    <th className="text-right px-5 py-3 font-medium hidden sm:table-cell">
-                      Details
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {data.teams.map((team, i) => (
-                    <tr
-                      key={team.team_id}
-                      className={`hover:bg-gray-50 transition-colors ${i === 0 ? 'bg-yellow-50/50' : ''}`}
-                    >
-                      <td className="px-5 py-3.5 text-sm font-bold text-gray-400">
-                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : team.rank}
-                      </td>
-                      <td className="px-3 py-3.5">
-                        <Link
-                          to={`/team/${team.team_id}?t=${activeTournamentId}`}
-                          className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
-                        >
-                          {team.team_name}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        {team.score === null ? (
-                          <span className="text-gray-400 text-sm">—</span>
-                        ) : (
-                          <ScoreTag score={team.score} raw={team.score === 0 ? 'E' : String(team.score)} />
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-right hidden sm:table-cell">
-                        <div className="flex gap-1 justify-end flex-wrap">
-                          {team.players
-                            ?.filter((p) => p.counting)
-                            .map((p) => (
-                              <span
-                                key={p.player_espn_id}
-                                className="text-xs bg-golf-green/10 text-golf-dark px-2 py-0.5 rounded-full"
-                              >
-                                {p.player_name.split(' ').slice(-1)[0]}
-                                {' '}
-                                <span className="font-mono">
-                                  {p.raw_score}
-                                </span>
-                              </span>
-                            ))}
-                        </div>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[540px]">
+                  <thead>
+                    <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                      <th className="text-left px-5 py-3 font-medium w-10">#</th>
+                      <th className="text-left px-3 py-3 font-medium">Team</th>
+                      <th className="text-right px-3 py-3 font-medium">R1</th>
+                      <th className="text-right px-3 py-3 font-medium">R2</th>
+                      <th className="text-right px-3 py-3 font-medium">R3</th>
+                      <th className="text-right px-3 py-3 font-medium">R4</th>
+                      <th className="text-right px-5 py-3 font-medium">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {data.teams.map((team, i) => (
+                      <tr
+                        key={team.team_id}
+                        className={`hover:bg-gray-50 transition-colors ${i === 0 ? 'bg-yellow-50/50' : ''}`}
+                      >
+                        <td className="px-5 py-3.5 text-sm font-bold text-gray-400">
+                          {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : team.rank}
+                        </td>
+                        <td className="px-3 py-3.5">
+                          <Link
+                            to={`/team/${team.team_id}?t=${activeTournamentId}`}
+                            className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
+                          >
+                            {team.team_name}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-3.5 text-right text-sm">
+                          <RoundScore val={team.rounds?.[1]} />
+                        </td>
+                        <td className="px-3 py-3.5 text-right text-sm">
+                          <RoundScore val={team.rounds?.[2]} />
+                        </td>
+                        <td className="px-3 py-3.5 text-right text-sm">
+                          <RoundScore val={team.rounds?.[3]} />
+                        </td>
+                        <td className="px-3 py-3.5 text-right text-sm">
+                          <RoundScore val={team.rounds?.[4]} />
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          {team.total === null ? (
+                            <span className="text-gray-400 text-sm">—</span>
+                          ) : (
+                            <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </>

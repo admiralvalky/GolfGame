@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import fetch from 'node-fetch';
 import db from '../db.js';
-import { computeTeamScore, parseScore } from '../scoring.js';
+import { computeTeamScoreByRound } from '../scoring.js';
 
 const router = Router();
 
@@ -26,8 +26,13 @@ async function fetchPlayerScores(espnTournamentId) {
 
   const scoreMap = new Map();
   for (const c of competitors) {
-    // score is a plain string: "-13", "+2", "E", "CUT", "WD", etc.
-    scoreMap.set(c.id, String(c.score ?? 'E'));
+    const rounds = {};
+    for (const ls of c.linescores ?? []) {
+      if (ls.period && ls.displayValue != null && ls.displayValue.trim() !== '') {
+        rounds[ls.period] = ls.displayValue.trim();
+      }
+    }
+    scoreMap.set(c.id, { rounds });
   }
 
   scoreCache.set(espnTournamentId, { data: scoreMap, expiresAt: now + CACHE_TTL_MS });
@@ -72,22 +77,24 @@ router.get('/:tournamentId', async (req, res) => {
       .prepare('SELECT * FROM picks WHERE team_id = ? AND tournament_id = ?')
       .all(team.id, tournamentId);
 
-    const { score, players } = computeTeamScore(picks, playerScores);
-    return { team_id: team.id, team_name: team.name, score, players };
+    const { rounds, total, players } = computeTeamScoreByRound(picks, playerScores);
+    const roundScores = {};
+    for (let r = 1; r <= 4; r++) roundScores[r] = rounds[r]?.score ?? null;
+    return { team_id: team.id, team_name: team.name, total, rounds: roundScores, players };
   });
 
-  // Sort: lower score wins; null scores go last
+  // Sort: lower total wins; null scores go last
   results.sort((a, b) => {
-    if (a.score === null && b.score === null) return 0;
-    if (a.score === null) return 1;
-    if (b.score === null) return -1;
-    return a.score - b.score;
+    if (a.total === null && b.total === null) return 0;
+    if (a.total === null) return 1;
+    if (b.total === null) return -1;
+    return a.total - b.total;
   });
 
   // Assign ranks (handle ties)
   let rank = 1;
   for (let i = 0; i < results.length; i++) {
-    if (i > 0 && results[i].score !== results[i - 1].score) rank = i + 1;
+    if (i > 0 && results[i].total !== results[i - 1].total) rank = i + 1;
     results[i].rank = rank;
   }
 
@@ -138,8 +145,8 @@ router.get('/season/standings', async (req, res) => {
       const picks = db
         .prepare('SELECT * FROM picks WHERE team_id = ? AND tournament_id = ?')
         .all(team.id, tournament.id);
-      const { score } = computeTeamScore(picks, playerScores);
-      scores[team.id] = score;
+      const { total } = computeTeamScoreByRound(picks, playerScores);
+      scores[team.id] = total;
     }
 
     tournamentResults.push({ tournament, scores });
