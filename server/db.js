@@ -1,0 +1,49 @@
+import Database from 'better-sqlite3';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const db = new Database(join(__dirname, 'golf.db'));
+
+// Enable WAL mode for better performance
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+// Create schema
+db.exec(`
+  CREATE TABLE IF NOT EXISTS teams (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE
+  );
+
+  CREATE TABLE IF NOT EXISTS tournaments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    espn_tournament_id TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    start_date TEXT,
+    status TEXT DEFAULT 'upcoming'
+  );
+
+  CREATE TABLE IF NOT EXISTS picks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_id INTEGER NOT NULL,
+    tournament_id INTEGER NOT NULL,
+    player_espn_id TEXT NOT NULL,
+    player_name TEXT NOT NULL,
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+    UNIQUE(team_id, tournament_id, player_espn_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS tournament_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id INTEGER NOT NULL,
+    team_id INTEGER NOT NULL,
+    final_score INTEGER NOT NULL,
+    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    UNIQUE(tournament_id, team_id)
+  );
+`);
+
+export default db;
