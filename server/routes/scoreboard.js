@@ -11,9 +11,14 @@ const scoreCache = new Map();
 function extractThru(c) {
   if (c.status?.thru != null) return c.status.thru;
   const detail = c.status?.type?.shortDetail ?? '';
+  // ESPN format: "-9 • T14" — T prefix + hole number
+  const tMatch = detail.match(/\bT(\d+)\b/);
+  if (tMatch) return Number(tMatch[1]);
+  // Fallback: "Thru 14" or "9 Thru 14"
   const thruMatch = detail.match(/Thru\s+(\d+)/i);
   if (thruMatch) return Number(thruMatch[1]);
-  if (/^\s*F\b/i.test(detail)) return 'F';
+  // Finished: "F" or "-9 • F"
+  if (/\bF\b/i.test(detail)) return 'F';
   return null;
 }
 
@@ -43,6 +48,7 @@ async function fetchPlayerScores(espnTournamentId, status = '') {
     scoreMap.set(c.id, {
       rounds,
       thru: extractThru(c),
+      overallStatus: String(c.score ?? '').trim().toUpperCase(),
     });
   }
 

@@ -1,24 +1,40 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { getScoreboard, getTournaments } from '../api.js';
-import ScoreTag from '../components/ScoreTag.jsx';
 import { formatTournamentDates, statusLabel } from '../utils/tournament.js';
 
-function RoundScore({ val }) {
-  if (val === null || val === undefined) return <span className="text-gray-300">—</span>;
-  return <ScoreTag score={val} raw={val === 0 ? 'E' : String(val)} />;
+const CUT_STATUSES = ['CUT', 'WD', 'DQ', 'MDF', 'W/D'];
+
+function TeamScoreCell({ val, className = '' }) {
+  if (val === null || val === undefined) {
+    return <span className="text-gray-300">—</span>;
+  }
+  const isOver = val > 0;
+  return (
+    <span className={`inline-block font-semibold font-mono px-2 py-0.5 rounded ${
+      isOver
+        ? 'bg-red-50 text-red-800'
+        : 'bg-green-100 text-gray-900'
+    } ${className}`}>
+      {val === 0 ? 'E' : val > 0 ? `+${val}` : String(val)}
+    </span>
+  );
 }
 
-function RoundCell({ raw, counting }) {
+function RoundCell({ raw, counting, isCut }) {
+  // Show CUT badge when round data is absent but player was cut
+  if (raw == null && isCut) {
+    return <span className="text-xs text-gray-400 font-medium">CUT</span>;
+  }
   if (raw == null) return <span className="text-gray-300 text-sm">—</span>;
   const s = String(raw).trim().toUpperCase();
   const numeric = s === 'E' ? 0 : parseInt(s, 10);
   const isNum = !isNaN(numeric);
   return (
     <span
-      className={`inline-block text-sm font-mono ${
+      className={`inline-block text-sm font-mono px-1 rounded ${
         counting
-          ? 'text-golf-green font-semibold ring-2 ring-golf-green rounded px-1'
+          ? 'bg-green-800 text-white font-semibold'
           : isNum && numeric > 0
           ? 'text-red-600'
           : 'text-gray-900'
@@ -53,6 +69,7 @@ export default function TeamDetail() {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -78,6 +95,7 @@ export default function TeamDetail() {
         tournament: scoreboard.tournament,
         allTeams: scoreboard.teams,
       });
+      setLastUpdated(new Date());
     } catch (err) {
       setError(err.response?.data?.error ?? err.message);
     } finally {
@@ -85,7 +103,7 @@ export default function TeamDetail() {
     }
   }
 
-  if (loading) {
+  if (loading && !data) {
     return <div className="flex items-center justify-center h-48 text-gray-400">Loading…</div>;
   }
 
@@ -111,12 +129,26 @@ export default function TeamDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link to={`/scoreboard?t=${tournament.id}`} className="text-golf-green text-sm hover:underline">
-          ← Scoreboard
-        </Link>
-        <span className="text-gray-300">/</span>
-        <h1 className="text-2xl font-bold text-gray-800">{team.team_name}</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link to={`/scoreboard?t=${tournament.id}`} className="text-golf-green text-sm hover:underline">
+            ← Scoreboard
+          </Link>
+          <span className="text-gray-300">/</span>
+          <h1 className="text-2xl font-bold text-gray-800">{team.team_name}</h1>
+        </div>
+        {lastUpdated && (
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="text-golf-green hover:text-golf-dark disabled:opacity-50 underline"
+            >
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tournament selector */}
@@ -144,8 +176,10 @@ export default function TeamDetail() {
           <div className="h-1 bg-golf-green" />
           <div className="p-5">
             <div className="text-3xl font-bold mb-1">
-              {team.total === null ? '—' : (
-                <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
+              {team.total === null ? (
+                <span className="text-gray-300">—</span>
+              ) : (
+                <TeamScoreCell val={team.total} className="text-3xl" />
               )}
             </div>
             <div className="text-xs text-gray-500">Team Score</div>
@@ -205,11 +239,11 @@ export default function TeamDetail() {
               <tr>
                 {[1, 2, 3, 4].map((r) => (
                   <td key={r} className="px-5 py-3">
-                    <RoundScore val={team.rounds?.[r]} />
+                    <TeamScoreCell val={team.rounds?.[r]} />
                   </td>
                 ))}
                 <td className="px-5 py-3">
-                  <RoundScore val={team.total} />
+                  <TeamScoreCell val={team.total} />
                 </td>
               </tr>
             </tbody>
@@ -222,7 +256,7 @@ export default function TeamDetail() {
         <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
           <span className="text-sm font-semibold text-gray-600">Picked Players</span>
           <span className="ml-2 text-xs text-gray-400">
-            (green ring = counting toward round score)
+            (green fill = counting toward round score)
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -241,6 +275,7 @@ export default function TeamDetail() {
             <tbody className="divide-y divide-gray-50">
               {team.players?.map((player) => {
                 const noEligible = player.eligible_rounds?.length === 0;
+                const isCut = CUT_STATUSES.includes(player.overallStatus?.toUpperCase() ?? '');
                 return (
                   <tr
                     key={player.player_espn_id}
@@ -259,6 +294,7 @@ export default function TeamDetail() {
                         <RoundCell
                           raw={player.rounds?.[r]}
                           counting={player.counting_rounds?.includes(r)}
+                          isCut={isCut}
                         />
                       </td>
                     ))}
@@ -266,7 +302,7 @@ export default function TeamDetail() {
                       {noEligible ? (
                         <span className="text-gray-300 text-sm">—</span>
                       ) : (
-                        <RoundScore val={playerTotal(player.rounds)} />
+                        <TeamScoreCell val={playerTotal(player.rounds)} />
                       )}
                     </td>
                   </tr>
