@@ -34,8 +34,8 @@ export default function Home() {
           ⛳
         </span>
         <h1 className="relative text-3xl sm:text-4xl font-bold mb-2">⛳ Golf Pool</h1>
-        <p className="relative text-golf-light font-semibold text-sm tracking-wide">
-          Pick 6 players · Best 2 scores count · Lowest total wins
+        <p className="relative text-golf-light font-semibold text-sm tracking-wide uppercase tracking-widest">
+          Pick 6 · Best 2 count · Lowest wins
         </p>
       </div>
 
