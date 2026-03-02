@@ -8,8 +8,20 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = process.env.DATA_DIR ?? __dirname;
 const dbPath = join(dataDir, 'golf.db');
 
-// Seed the database from the bundled snapshot if starting fresh
-if (!existsSync(dbPath)) {
+// Seed from snapshot if db is missing or empty (no teams)
+function needsSeed() {
+  if (!existsSync(dbPath)) return true;
+  try {
+    const tmp = new Database(dbPath);
+    const count = tmp.prepare("SELECT COUNT(*) as c FROM sqlite_master WHERE type='table' AND name='teams'").get().c;
+    if (count === 0) { tmp.close(); return true; }
+    const teams = tmp.prepare('SELECT COUNT(*) as c FROM teams').get().c;
+    tmp.close();
+    return teams === 0;
+  } catch { return true; }
+}
+
+if (needsSeed()) {
   writeFileSync(dbPath, Buffer.from(seedDb, 'base64'));
   console.log('Seeded golf.db from snapshot.');
 }
