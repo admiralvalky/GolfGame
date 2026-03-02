@@ -1,10 +1,20 @@
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync, writeFileSync } from 'fs';
+import { seedDb } from './seed-db.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = process.env.DATA_DIR ?? __dirname;
-const db = new Database(join(dataDir, 'golf.db'));
+const dbPath = join(dataDir, 'golf.db');
+
+// Seed the database from the bundled snapshot if starting fresh
+if (!existsSync(dbPath)) {
+  writeFileSync(dbPath, Buffer.from(seedDb, 'base64'));
+  console.log('Seeded golf.db from snapshot.');
+}
+
+const db = new Database(dbPath);
 
 // Enable WAL mode for better performance
 db.pragma('journal_mode = WAL');
