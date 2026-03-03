@@ -18,12 +18,62 @@ function RankBadge({ rank }) {
   return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-gray-500 text-xs font-bold">{rank}</span>;
 }
 
+function TeamScoreCell({ val }) {
+  if (val === null || val === undefined) return <span className="text-gray-300">—</span>;
+  const isOver = val > 0;
+  return (
+    <span className={`inline-block font-semibold font-mono px-2 py-0.5 rounded border border-gray-800 ${
+      isOver ? 'bg-red-50 text-red-800' : 'bg-green-100 text-gray-900'
+    }`}>
+      {val === 0 ? 'E' : val > 0 ? `+${val}` : String(val)}
+    </span>
+  );
+}
+
+function RoundCell({ raw, counting, isCut }) {
+  if (raw == null && isCut) return <span className="text-[10px] text-gray-400 font-medium tracking-wide">CUT</span>;
+  if (raw == null) return <span className="text-gray-300 text-sm">—</span>;
+  const s = String(raw).trim().toUpperCase();
+  const numeric = s === 'E' ? 0 : parseInt(s, 10);
+  const isNum = !isNaN(numeric);
+  return (
+    <span className={`inline-block text-sm font-mono px-1.5 py-0.5 rounded ${
+      counting ? 'bg-emerald-700 text-white font-semibold shadow-sm'
+      : isNum && numeric > 0 ? 'text-rose-600'
+      : 'text-gray-600'
+    }`}>{raw}</span>
+  );
+}
+
+function playerTotal(rounds) {
+  let sum = null;
+  for (let r = 1; r <= 4; r++) {
+    const raw = rounds?.[r];
+    if (raw == null) continue;
+    const s = String(raw).trim().toUpperCase();
+    const n = s === 'E' ? 0 : parseInt(s, 10);
+    if (!isNaN(n)) { if (sum === null) sum = 0; sum += n; }
+  }
+  return sum;
+}
+
+const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF', 'W/D']);
+
 export default function Scoreboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tournaments, setTournaments] = useState([]);
   const [tournamentsLoading, setTournamentsLoading] = useState(true);
+  const [expandedTeams, setExpandedTeams] = useState(new Set());
 
   const activeTournamentId = searchParams.get('t');
+
+  function toggleTeam(teamId) {
+    setExpandedTeams((prev) => {
+      const next = new Set(prev);
+      next.has(teamId) ? next.delete(teamId) : next.add(teamId);
+      return next;
+    });
+  }
 
   useEffect(() => {
     getTournaments().then((data) => {
@@ -163,54 +213,126 @@ export default function Scoreboard() {
                       const barPct = team.total !== null
                         ? Math.round(((team.total - best) / range) * 100)
                         : 0;
+                      const isExpanded = expandedTeams.has(team.team_id);
                       return (
-                        <tr
-                          key={team.team_id}
-                          className={`hover:bg-gray-50 transition-colors ${
-                            isLeader
-                              ? 'bg-gradient-to-r from-amber-50 to-yellow-50/30 border-l-4 border-golf-gold'
-                              : ''
-                          }`}
-                        >
-                          <td className="px-5 py-3.5 text-sm">
-                            <RankBadge rank={i + 1} />
-                          </td>
-                          <td className="px-3 py-3.5">
-                            <Link
-                              to={`/team/${team.team_id}?t=${activeTournamentId}`}
-                              className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
-                            >
-                              {team.team_name}
-                            </Link>
-                          </td>
-                          <td className="px-3 py-3.5 text-right text-sm">
-                            <RoundScore val={team.rounds?.[1]} />
-                          </td>
-                          <td className="px-3 py-3.5 text-right text-sm">
-                            <RoundScore val={team.rounds?.[2]} />
-                          </td>
-                          <td className="px-3 py-3.5 text-right text-sm">
-                            <RoundScore val={team.rounds?.[3]} />
-                          </td>
-                          <td className="px-3 py-3.5 text-right text-sm">
-                            <RoundScore val={team.rounds?.[4]} />
-                          </td>
-                          <td className="px-5 py-3.5 text-right">
-                            {team.total === null ? (
-                              <span className="text-gray-400 text-sm">—</span>
-                            ) : (
-                              <div className="inline-flex flex-col items-end gap-1">
-                                <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
-                                <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-1 rounded-full bg-golf-green"
-                                    style={{ width: `${barPct}%` }}
-                                  />
-                                </div>
+                        <>
+                          <tr
+                            key={team.team_id}
+                            className={`hover:bg-gray-50 transition-colors ${
+                              isLeader
+                                ? 'bg-gradient-to-r from-amber-50 to-yellow-50/30 border-l-4 border-golf-gold'
+                                : ''
+                            }`}
+                          >
+                            <td className="px-5 py-3.5 text-sm">
+                              <RankBadge rank={i + 1} />
+                            </td>
+                            <td className="px-3 py-3.5">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => toggleTeam(team.team_id)}
+                                  className="text-gray-400 hover:text-golf-green transition-colors p-0.5 rounded text-xs"
+                                  aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                                >
+                                  {isExpanded ? '▼' : '▶'}
+                                </button>
+                                <Link
+                                  to={`/team/${team.team_id}?t=${activeTournamentId}`}
+                                  className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
+                                >
+                                  {team.team_name}
+                                </Link>
                               </div>
-                            )}
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="px-3 py-3.5 text-right text-sm">
+                              <RoundScore val={team.rounds?.[1]} />
+                            </td>
+                            <td className="px-3 py-3.5 text-right text-sm">
+                              <RoundScore val={team.rounds?.[2]} />
+                            </td>
+                            <td className="px-3 py-3.5 text-right text-sm">
+                              <RoundScore val={team.rounds?.[3]} />
+                            </td>
+                            <td className="px-3 py-3.5 text-right text-sm">
+                              <RoundScore val={team.rounds?.[4]} />
+                            </td>
+                            <td className="px-5 py-3.5 text-right">
+                              {team.total === null ? (
+                                <span className="text-gray-400 text-sm">—</span>
+                              ) : (
+                                <div className="inline-flex flex-col items-end gap-1">
+                                  <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
+                                  <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-1 rounded-full bg-golf-green"
+                                      style={{ width: `${barPct}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr key={`${team.team_id}-drawer`} className="bg-gray-50 border-b border-gray-200">
+                              <td colSpan={7} className="px-4 pb-4 pt-2">
+                                <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                                  <table className="w-full min-w-[560px]">
+                                    <thead>
+                                      <tr className="bg-gray-50 border-b border-gray-200 text-gray-400 uppercase tracking-wider" style={{fontSize:'10px'}}>
+                                        <th className="text-center px-3 py-2 font-medium">Pos</th>
+                                        <th className="text-left px-4 py-2 font-medium">Player</th>
+                                        <th className="text-center px-3 py-2 font-medium">Thru</th>
+                                        <th className="text-center px-3 py-2 font-medium border-l border-gray-200">R1</th>
+                                        <th className="text-center px-3 py-2 font-medium">R2</th>
+                                        <th className="text-center px-3 py-2 font-medium">R3</th>
+                                        <th className="text-center px-3 py-2 font-medium">R4</th>
+                                        <th className="text-center px-3 py-2 font-medium border-l border-gray-200">Total</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                      {[...(team.players ?? [])].sort((a, b) => {
+                                        const ta = playerTotal(a.rounds), tb = playerTotal(b.rounds);
+                                        if (ta === null && tb === null) return 0;
+                                        if (ta === null) return 1;
+                                        if (tb === null) return -1;
+                                        return ta - tb;
+                                      }).map((player) => {
+                                        const noEligible = player.eligible_rounds?.length === 0;
+                                        const isCut = CUT_STATUSES.has(player.overallStatus?.toUpperCase() ?? '');
+                                        return (
+                                          <tr key={player.player_espn_id} className={`hover:bg-slate-50 ${noEligible ? 'opacity-40' : ''}`}>
+                                            <td className="px-3 py-3 text-center font-mono text-gray-400 text-xs">
+                                              {isCut ? <span className="text-gray-400">CUT</span> : player.rank ?? '—'}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm">
+                                              <span className={noEligible ? 'line-through text-gray-400 italic' : 'text-gray-800 font-medium'}>
+                                                {player.player_name}
+                                              </span>
+                                            </td>
+                                            <td className="px-3 py-3 text-center font-mono text-gray-400 text-xs">
+                                              {isCut ? 'CUT' : player.thru != null ? player.thru : '—'}
+                                            </td>
+                                            {[1, 2, 3, 4].map((r) => (
+                                              <td key={r} className={`px-3 py-3 text-center${r === 1 ? ' border-l border-gray-200' : ''}`}>
+                                                <RoundCell raw={player.rounds?.[r]} counting={player.counting_rounds?.includes(r)} isCut={isCut} />
+                                              </td>
+                                            ))}
+                                            <td className="px-3 py-3 text-center border-l border-gray-200">
+                                              {noEligible
+                                                ? <span className="text-gray-300 text-sm">—</span>
+                                                : <TeamScoreCell val={playerTotal(player.rounds)} />
+                                              }
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
                       );
                     })}
                   </tbody>
