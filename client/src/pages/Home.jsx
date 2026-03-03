@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getTournaments, getTeams, getSeasonStandings } from '../api.js';
+import { getTournaments, getTeams, getSeasonStandings, getEspnTournamentDetails } from '../api.js';
+import { formatTournamentDates } from '../utils/tournament.js';
 
 function StatusBadge({ status }) {
   const cfg = status === 'in'
@@ -10,6 +11,12 @@ function StatusBadge({ status }) {
     : 'bg-yellow-400/30 text-yellow-100';
   const label = status === 'in' ? 'Live' : status === 'post' ? 'Completed' : 'Upcoming';
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg}`}>{label}</span>;
+}
+
+function tournamentStatusLabel(status) {
+  if (status === 'in') return 'Live';
+  if (status === 'post') return 'Completed';
+  return 'Upcoming';
 }
 
 function getTournamentWinner(seasonTeams, tournamentId) {
@@ -29,6 +36,7 @@ export default function Home() {
   const [tournaments, setTournaments] = useState([]);
   const [teams, setTeams] = useState([]);
   const [seasonTeams, setSeasonTeams] = useState([]);
+  const [heroDetails, setHeroDetails] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +45,12 @@ export default function Home() {
         setTournaments(t.tournaments);
         setTeams(tm.teams);
         setSeasonTeams(s.teams ?? []);
+        const hero = t.tournaments[0] ?? null;
+        if (hero?.espn_tournament_id) {
+          getEspnTournamentDetails(hero.espn_tournament_id)
+            .then(setHeroDetails)
+            .catch(() => {});
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -64,7 +78,21 @@ export default function Home() {
                 <div className="relative flex items-center justify-center gap-2 mb-2">
                   <StatusBadge status={heroTournament.status} />
                 </div>
-                <h1 className="relative text-3xl sm:text-4xl font-bold mb-2">{heroTournament.name}</h1>
+                <h1 className="relative text-3xl sm:text-4xl font-bold mb-3">{heroTournament.name}</h1>
+                {heroDetails && (
+                  <div className="relative flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mb-3 text-white/80 text-sm">
+                    {heroDetails.courseName && (
+                      <span>📍 {heroDetails.courseName}{heroDetails.city ? `, ${heroDetails.city}` : ''}{heroDetails.state ? `, ${heroDetails.state}` : ''}</span>
+                    )}
+                    {heroDetails.par && (
+                      <span>Par {heroDetails.par}</span>
+                    )}
+                    {heroDetails.purse && (
+                      <span>💰 {heroDetails.purse}</span>
+                    )}
+                    <span>📅 {formatTournamentDates(heroTournament)}</span>
+                  </div>
+                )}
                 <p className="relative text-golf-light font-medium text-sm">View Scoreboard →</p>
               </>
             ) : (
@@ -85,13 +113,6 @@ export default function Home() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { to: '/setup', icon: '⚙️', label: 'Setup', desc: 'Teams & tournaments' },
-          {
-            to: activeTournament ? `/picks/${activeTournament.id}` : '/setup',
-            icon: '🏌️',
-            label: 'Pick Players',
-            desc: activeTournament ? activeTournament.name : 'No active tournament',
-          },
           {
             to: activeTournament ? `/scoreboard` : '/setup',
             icon: '📊',
@@ -99,6 +120,13 @@ export default function Home() {
             desc: 'Live standings',
           },
           { to: '/season', icon: '🏆', label: 'Season', desc: 'All-time standings' },
+          {
+            to: activeTournament ? `/picks/${activeTournament.id}` : '/setup',
+            icon: '🏌️',
+            label: 'Pick Players',
+            desc: activeTournament ? activeTournament.name : 'No active tournament',
+          },
+          { to: '/setup', icon: '⚙️', label: 'Setup', desc: 'Teams & tournaments' },
         ].map(({ to, icon, label, desc }) => (
           <Link
             key={label}
@@ -151,7 +179,7 @@ export default function Home() {
                           : 'bg-yellow-100 text-yellow-700'
                       }`}
                     >
-                      {t.status}
+                      {tournamentStatusLabel(t.status)}
                     </span>
                   </li>
                 );
@@ -162,7 +190,7 @@ export default function Home() {
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-golf-green p-5">
           <h2 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            👥 Teams
+            ⛳ Teams
             <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
               {teams.length}
             </span>

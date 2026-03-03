@@ -88,4 +88,28 @@ router.get('/tournaments/:id/players', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/espn/tournaments/:id/details
+ * Returns course name, par, purse, and location from ESPN core API.
+ */
+router.get('/tournaments/:id/details', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await cachedFetch(
+      `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${id}?lang=en&region=us`
+    );
+    const course = data.courses?.[0] ?? null;
+    res.json({
+      courseName: course?.name ?? null,
+      par: course?.shotsToPar ?? null,
+      purse: data.displayPurse ?? null,
+      city: course?.address?.city ?? null,
+      state: course?.address?.state ?? null,
+    });
+  } catch (err) {
+    console.error('ESPN details error:', err.message);
+    res.status(502).json({ error: 'Failed to fetch tournament details', detail: err.message });
+  }
+});
+
 export default router;

@@ -6,6 +6,8 @@ const api = axios.create({ baseURL: '/api' });
 export const getEspnTournaments = () => api.get('/espn/tournaments').then((r) => r.data);
 export const getEspnPlayers = (tournamentId) =>
   api.get(`/espn/tournaments/${tournamentId}/players`).then((r) => r.data);
+export const getEspnTournamentDetails = (espnId) =>
+  api.get(`/espn/tournaments/${espnId}/details`).then((r) => r.data);
 
 // ── Teams ─────────────────────────────────────────────────────────────────────
 export const getTeams = () => api.get('/teams').then((r) => r.data);
