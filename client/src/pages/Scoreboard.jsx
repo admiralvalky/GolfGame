@@ -3,12 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { getTournaments, getScoreboard } from '../api.js';
 import { useAutoRefresh } from '../hooks/useAutoRefresh.js';
 import LastUpdated from '../components/LastUpdated.jsx';
-import ScoreTag from '../components/ScoreTag.jsx';
 import { formatTournamentDates, statusLabel } from '../utils/tournament.js';
 
-function RoundScore({ val }) {
+function TeamRoundScore({ val }) {
   if (val === null || val === undefined) return <span className="text-gray-300">—</span>;
-  return <ScoreTag score={val} raw={val === 0 ? 'E' : String(val)} />;
+  return (
+    <span className="font-mono text-sm text-gray-800">
+      {val === 0 ? 'E' : val > 0 ? `+${val}` : String(val)}
+    </span>
+  );
 }
 
 function RankBadge({ rank }) {
@@ -121,12 +124,7 @@ export default function Scoreboard() {
     );
   }
 
-  // Score bar calculation
   const teams = data?.teams ?? [];
-  const totals = teams.map((t) => t.total).filter((v) => v !== null && v !== undefined);
-  const best = totals.length ? Math.min(...totals) : 0;
-  const worst = totals.length ? Math.max(...totals) : 0;
-  const range = worst - best || 1;
 
   return (
     <div className="space-y-6">
@@ -136,20 +134,20 @@ export default function Scoreboard() {
       </div>
 
       {/* Tournament selector */}
-      <div className="flex gap-2 flex-wrap">
-        {tournaments.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setSearchParams({ t: t.id })}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
-              String(activeTournamentId) === String(t.id)
-                ? 'bg-golf-green text-white border-golf-green'
-                : 'bg-white text-gray-700 border-gray-200 hover:border-golf-green'
-            }`}
-          >
-            {t.name}
-          </button>
-        ))}
+      <div className="flex items-center gap-3">
+        <label htmlFor="tournament-select" className="text-sm font-medium text-gray-600 whitespace-nowrap">
+          Tournament
+        </label>
+        <select
+          id="tournament-select"
+          value={activeTournamentId ?? ''}
+          onChange={(e) => setSearchParams({ t: e.target.value })}
+          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-golf-green focus:border-golf-green"
+        >
+          {tournaments.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
       </div>
 
       {error && (
@@ -210,9 +208,6 @@ export default function Scoreboard() {
                   <tbody className="divide-y divide-gray-50">
                     {data.teams.map((team, i) => {
                       const isLeader = i === 0;
-                      const barPct = team.total !== null
-                        ? Math.round(((team.total - best) / range) * 100)
-                        : 0;
                       const isExpanded = expandedTeams.has(team.team_id);
                       return (
                         <>
@@ -224,10 +219,7 @@ export default function Scoreboard() {
                                 : ''
                             }`}
                           >
-                            <td className="px-5 py-3.5 text-sm">
-                              <RankBadge rank={i + 1} />
-                            </td>
-                            <td className="px-3 py-3.5">
+                            <td className="px-3 py-3.5 text-sm">
                               <div className="flex items-center gap-1.5">
                                 <button
                                   onClick={() => toggleTeam(team.team_id)}
@@ -236,40 +228,34 @@ export default function Scoreboard() {
                                 >
                                   {isExpanded ? '▼' : '▶'}
                                 </button>
-                                <Link
-                                  to={`/team/${team.team_id}?t=${activeTournamentId}`}
-                                  className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
-                                >
-                                  {team.team_name}
-                                </Link>
+                                <RankBadge rank={i + 1} />
                               </div>
                             </td>
-                            <td className="px-3 py-3.5 text-right text-sm">
-                              <RoundScore val={team.rounds?.[1]} />
+                            <td className="px-3 py-3.5">
+                              <Link
+                                to={`/team/${team.team_id}?t=${activeTournamentId}`}
+                                className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
+                              >
+                                {team.team_name}
+                              </Link>
                             </td>
                             <td className="px-3 py-3.5 text-right text-sm">
-                              <RoundScore val={team.rounds?.[2]} />
+                              <TeamRoundScore val={team.rounds?.[1]} />
                             </td>
                             <td className="px-3 py-3.5 text-right text-sm">
-                              <RoundScore val={team.rounds?.[3]} />
+                              <TeamRoundScore val={team.rounds?.[2]} />
                             </td>
                             <td className="px-3 py-3.5 text-right text-sm">
-                              <RoundScore val={team.rounds?.[4]} />
+                              <TeamRoundScore val={team.rounds?.[3]} />
+                            </td>
+                            <td className="px-3 py-3.5 text-right text-sm">
+                              <TeamRoundScore val={team.rounds?.[4]} />
                             </td>
                             <td className="px-5 py-3.5 text-right">
-                              {team.total === null ? (
-                                <span className="text-gray-400 text-sm">—</span>
-                              ) : (
-                                <div className="inline-flex flex-col items-end gap-1">
-                                  <ScoreTag score={team.total} raw={team.total === 0 ? 'E' : String(team.total)} />
-                                  <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-1 rounded-full bg-golf-green"
-                                      style={{ width: `${barPct}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
+                              {team.total === null
+                                ? <span className="text-gray-400 text-sm">—</span>
+                                : <TeamScoreCell val={team.total} />
+                              }
                             </td>
                           </tr>
                           {isExpanded && (
