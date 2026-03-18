@@ -73,4 +73,18 @@ try {
   db.exec(`ALTER TABLE tournaments ADD COLUMN end_date TEXT`);
 } catch (_) { /* column already exists */ }
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cached_player_scores (
+    espn_tournament_id TEXT NOT NULL,
+    player_espn_id TEXT NOT NULL,
+    rounds_json TEXT NOT NULL,
+    thru TEXT,
+    overall_status TEXT,
+    total_score TEXT,
+    rank TEXT,
+    saved_at TEXT NOT NULL,
+    PRIMARY KEY (espn_tournament_id, player_espn_id)
+  );
+`);
+
 export default db;

@@ -58,6 +58,55 @@ function extractThru(c, linescores) {
   return holesPlayed;
 }
 
+function loadScoreMapFromDb(espnTournamentId) {
+  const rows = db
+    .prepare('SELECT * FROM cached_player_scores WHERE espn_tournament_id = ?')
+    .all(espnTournamentId);
+  if (rows.length === 0) return null;
+  const scoreMap = new Map();
+  for (const row of rows) {
+    scoreMap.set(row.player_espn_id, {
+      rounds: JSON.parse(row.rounds_json),
+      thru: row.thru,
+      overallStatus: row.overall_status ?? '',
+      totalScore: row.total_score ?? '',
+      rank: row.rank ?? null,
+    });
+  }
+  return scoreMap;
+}
+
+function saveScoreMapToDb(espnTournamentId, scoreMap) {
+  const upsert = db.prepare(`
+    INSERT INTO cached_player_scores
+      (espn_tournament_id, player_espn_id, rounds_json, thru, overall_status, total_score, rank, saved_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(espn_tournament_id, player_espn_id) DO UPDATE SET
+      rounds_json = excluded.rounds_json,
+      thru = excluded.thru,
+      overall_status = excluded.overall_status,
+      total_score = excluded.total_score,
+      rank = excluded.rank,
+      saved_at = excluded.saved_at
+  `);
+  const now = new Date().toISOString();
+  const insertAll = db.transaction((map) => {
+    for (const [playerId, data] of map) {
+      upsert.run(
+        espnTournamentId,
+        playerId,
+        JSON.stringify(data.rounds),
+        data.thru != null ? String(data.thru) : null,
+        data.overallStatus ?? null,
+        data.totalScore ?? null,
+        data.rank ?? null,
+        now
+      );
+    }
+  });
+  insertAll(scoreMap);
+}
+
 async function fetchPlayerScores(espnTournamentId, status = '') {
   const now = Date.now();
   const cached = scoreCache.get(espnTournamentId);
@@ -65,13 +114,29 @@ async function fetchPlayerScores(espnTournamentId, status = '') {
 
   // Use scoreboard endpoint with event filter — more reliable than /leaderboard
   const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${espnTournamentId}`;
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)' },
-  });
-  if (!res.ok) throw new Error(`ESPN error: ${res.status}`);
+  let competitors = [];
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)' },
+    });
+    if (res.ok) {
+      const json = await res.json();
+      competitors = json.events?.[0]?.competitions?.[0]?.competitors ?? [];
+    }
+  } catch (err) {
+    console.error(`ESPN fetch failed for ${espnTournamentId}:`, err.message);
+  }
 
-  const json = await res.json();
-  const competitors = json.events?.[0]?.competitions?.[0]?.competitors ?? [];
+  // If ESPN returned no data, fall back to DB cache
+  if (competitors.length === 0) {
+    const dbMap = loadScoreMapFromDb(espnTournamentId);
+    if (dbMap && dbMap.size > 0) {
+      console.log(`Using DB-cached scores for ESPN tournament ${espnTournamentId}`);
+      scoreCache.set(espnTournamentId, { data: dbMap, expiresAt: now + 60 * 60 * 1000 });
+      return dbMap;
+    }
+    throw new Error(`No score data available for ESPN tournament ${espnTournamentId}`);
+  }
 
   // First pass: determine how far the tournament has progressed
   let maxRound = 0;
@@ -116,6 +181,13 @@ async function fetchPlayerScores(espnTournamentId, status = '') {
     const display = j - i > 1 ? `T${i + 1}` : String(i + 1);
     for (let k = i; k < j; k++) scoreMap.get(active[k].id).rank = display;
     i = j;
+  }
+
+  // Persist to DB so historical scores survive ESPN API expiry
+  try {
+    saveScoreMapToDb(espnTournamentId, scoreMap);
+  } catch (err) {
+    console.error('Failed to cache scores to DB:', err.message);
   }
 
   const TTL = status === 'post' ? 24 * 60 * 60 * 1000 : 10 * 60 * 1000;
