@@ -223,30 +223,17 @@ export default function TeamDetail() {
         <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
           <span className="text-sm font-semibold text-gray-600">Round Breakdown</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[360px]">
-            <thead>
-              <tr className="text-xs text-gray-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-3 font-medium">R1</th>
-                <th className="text-left px-5 py-3 font-medium">R2</th>
-                <th className="text-left px-5 py-3 font-medium">R3</th>
-                <th className="text-left px-5 py-3 font-medium">R4</th>
-                <th className="text-left px-5 py-3 font-medium">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {[1, 2, 3, 4].map((r) => (
-                  <td key={r} className="px-5 py-3">
-                    <TeamScoreCell val={team.rounds?.[r]} />
-                  </td>
-                ))}
-                <td className="px-5 py-3">
-                  <TeamScoreCell val={team.total} />
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="flex gap-0 divide-x divide-gray-100">
+          {[1, 2, 3, 4].map((r) => (
+            <div key={r} className="flex-1 text-center px-2 py-3">
+              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">R{r}</div>
+              <TeamScoreCell val={team.rounds?.[r]} />
+            </div>
+          ))}
+          <div className="flex-1 text-center px-2 py-3 bg-gray-50">
+            <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Total</div>
+            <TeamScoreCell val={team.total} />
+          </div>
         </div>
       </div>
 
@@ -256,17 +243,17 @@ export default function TeamDetail() {
           <span className="font-semibold text-gray-700 tracking-widest uppercase" style={{fontSize:'11px'}}>Picked Players</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px]">
+          <table className="w-full min-w-[460px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-400 uppercase tracking-wider" style={{fontSize:'10px'}}>
-                <th className="text-center px-3 py-3 font-medium" style={{fontSize:'10px'}}>Pos</th>
-                <th className="text-left px-5 py-3 font-medium">Player</th>
-                <th className="text-center pl-1 pr-3 py-3 font-medium" style={{fontSize:'10px'}}>Thru</th>
-                <th className="text-center px-3 py-3 font-medium border-l border-gray-300">R1</th>
-                <th className="text-center px-3 py-3 font-medium">R2</th>
-                <th className="text-center px-3 py-3 font-medium">R3</th>
-                <th className="text-center px-3 py-3 font-medium">R4</th>
-                <th className="text-center px-3 py-3 font-medium border-l border-gray-300">Total</th>
+                <th className="text-center px-2 py-2.5 font-medium">Pos</th>
+                <th className="text-left px-2 sm:px-4 py-2.5 font-medium">Player</th>
+                <th className="text-center px-2 py-2.5 font-medium">Thru</th>
+                <th className="text-center px-2 py-2.5 font-medium border-l border-gray-300">R1</th>
+                <th className="text-center px-2 py-2.5 font-medium">R2</th>
+                <th className="text-center px-2 py-2.5 font-medium">R3</th>
+                <th className="text-center px-2 py-2.5 font-medium">R4</th>
+                <th className="text-center px-2 py-2.5 font-medium border-l border-gray-300">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -285,12 +272,12 @@ export default function TeamDetail() {
                     key={player.player_espn_id}
                     className={`transition-colors hover:bg-slate-50 ${noEligible ? 'opacity-40' : ''}`}
                   >
-                    <td className="px-3 py-4 text-center font-mono text-gray-400 whitespace-nowrap" style={{fontSize:'11px'}}>
+                    <td className="px-2 py-3 text-center font-mono text-gray-400 whitespace-nowrap" style={{fontSize:'11px'}}>
                       {isCut
                         ? <span className="text-gray-400">CUT</span>
                         : player.rank ?? '—'}
                     </td>
-                    <td className="px-5 py-4 text-sm">
+                    <td className="px-2 sm:px-4 py-3 text-sm">
                       <span className={
                         noEligible
                           ? 'line-through text-gray-400 italic'
@@ -299,7 +286,7 @@ export default function TeamDetail() {
                         {player.player_name}
                       </span>
                     </td>
-                    <td className="pl-1 pr-3 py-4 text-center font-mono text-gray-400" style={{fontSize:'11px'}}>
+                    <td className="px-2 py-3 text-center font-mono text-gray-400" style={{fontSize:'11px'}}>
                       {isCut
                         ? 'CUT'
                         : player.thru != null
@@ -307,7 +294,7 @@ export default function TeamDetail() {
                         : '—'}
                     </td>
                     {[1, 2, 3, 4].map((r) => (
-                      <td key={r} className={`px-3 py-4 text-center${r === 1 ? ' border-l border-gray-300' : ''}`}>
+                      <td key={r} className={`px-2 py-3 text-center${r === 1 ? ' border-l border-gray-300' : ''}`}>
                         <RoundCell
                           raw={player.rounds?.[r]}
                           counting={player.counting_rounds?.includes(r)}
@@ -315,7 +302,7 @@ export default function TeamDetail() {
                         />
                       </td>
                     ))}
-                    <td className="px-3 py-4 text-center border-l border-gray-300">
+                    <td className="px-2 py-3 text-center border-l border-gray-300">
                       {noEligible ? (
                         <span className="text-gray-300 text-sm">—</span>
                       ) : (

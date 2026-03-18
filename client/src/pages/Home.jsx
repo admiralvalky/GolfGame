@@ -71,16 +71,16 @@ export default function Home() {
       {/* Hero */}
       {(() => {
         const heroContent = (
-          <div className="relative bg-gradient-to-br from-golf-dark via-golf-green to-golf-fairway rounded-2xl p-8 text-white text-center shadow-lg overflow-hidden">
+          <div className="relative bg-gradient-to-br from-golf-dark via-golf-green to-golf-fairway rounded-2xl p-5 sm:p-8 text-white text-center shadow-lg overflow-hidden">
             <span className="absolute inset-0 flex items-center justify-center text-[8rem] opacity-5 pointer-events-none select-none">⛳</span>
             {heroTournament ? (
               <>
                 <div className="relative flex items-center justify-center gap-2 mb-2">
                   <StatusBadge status={heroTournament.status} />
                 </div>
-                <h1 className="relative text-3xl sm:text-4xl font-bold mb-3">{heroTournament.name}</h1>
+                <h1 className="relative text-xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3">{heroTournament.name}</h1>
                 {heroDetails && (
-                  <div className="relative flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mb-3 text-white/80 text-sm">
+                  <div className="relative flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mb-2 sm:mb-3 text-white/80 text-xs sm:text-sm">
                     {heroDetails.courseName && (
                       <span>📍 {heroDetails.courseName}{heroDetails.city ? `, ${heroDetails.city}` : ''}{heroDetails.state ? `, ${heroDetails.state}` : ''}</span>
                     )}
@@ -97,7 +97,7 @@ export default function Home() {
               </>
             ) : (
               <>
-                <h1 className="relative text-3xl sm:text-4xl font-bold mb-2">⛳ Golf Pool</h1>
+                <h1 className="relative text-2xl sm:text-3xl md:text-4xl font-bold mb-2">⛳ Golf Pool</h1>
                 <p className="relative text-golf-light font-semibold text-sm tracking-widest uppercase">
                   Pick 6 · Best 2 count · Lowest wins
                 </p>

@@ -165,7 +165,7 @@ export default function Scoreboard() {
       {data && (
         <>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-3 bg-golf-dark border-b border-gray-700 flex items-center justify-between">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-golf-dark border-b border-gray-700 flex items-center justify-between">
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-semibold text-white">
                   {data.tournament?.name}
@@ -193,16 +193,16 @@ export default function Scoreboard() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[540px]">
+                <table className="w-full min-w-[380px]">
                   <thead>
                     <tr className="bg-golf-dark text-white text-xs uppercase tracking-wide">
-                      <th className="text-left px-5 py-3 font-medium w-10">#</th>
-                      <th className="text-left px-3 py-3 font-medium">Team</th>
-                      <th className="text-right px-3 py-3 font-medium">R1</th>
-                      <th className="text-right px-3 py-3 font-medium">R2</th>
-                      <th className="text-right px-3 py-3 font-medium">R3</th>
-                      <th className="text-right px-3 py-3 font-medium">R4</th>
-                      <th className="text-right px-5 py-3 font-medium">Total</th>
+                      <th className="text-left px-2 sm:px-5 py-2.5 font-medium w-10">#</th>
+                      <th className="text-left px-2 sm:px-3 py-2.5 font-medium">Team</th>
+                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R1</th>
+                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R2</th>
+                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R3</th>
+                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R4</th>
+                      <th className="text-right px-2 sm:px-5 py-2.5 font-medium">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -219,11 +219,11 @@ export default function Scoreboard() {
                                 : ''
                             }`}
                           >
-                            <td className="px-3 py-3.5 text-sm">
-                              <div className="flex items-center gap-1.5">
+                            <td className="px-2 sm:px-3 py-3 text-sm">
+                              <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => toggleTeam(team.team_id)}
-                                  className="text-gray-400 hover:text-golf-green transition-colors p-0.5 rounded text-xs"
+                                  className="text-gray-400 hover:text-golf-green transition-colors p-1 rounded text-xs"
                                   aria-label={isExpanded ? 'Collapse' : 'Expand'}
                                 >
                                   {isExpanded ? '▼' : '▶'}
@@ -231,7 +231,7 @@ export default function Scoreboard() {
                                 <RankBadge rank={i + 1} />
                               </div>
                             </td>
-                            <td className="px-3 py-3.5">
+                            <td className="px-2 sm:px-3 py-3">
                               <Link
                                 to={`/team/${team.team_id}?t=${activeTournamentId}`}
                                 className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
@@ -239,19 +239,19 @@ export default function Scoreboard() {
                                 {team.team_name}
                               </Link>
                             </td>
-                            <td className="px-3 py-3.5 text-right text-sm">
+                            <td className="px-2 sm:px-3 py-3 text-right text-sm">
                               <TeamRoundScore val={team.rounds?.[1]} />
                             </td>
-                            <td className="px-3 py-3.5 text-right text-sm">
+                            <td className="px-2 sm:px-3 py-3 text-right text-sm">
                               <TeamRoundScore val={team.rounds?.[2]} />
                             </td>
-                            <td className="px-3 py-3.5 text-right text-sm">
+                            <td className="px-2 sm:px-3 py-3 text-right text-sm">
                               <TeamRoundScore val={team.rounds?.[3]} />
                             </td>
-                            <td className="px-3 py-3.5 text-right text-sm">
+                            <td className="px-2 sm:px-3 py-3 text-right text-sm">
                               <TeamRoundScore val={team.rounds?.[4]} />
                             </td>
-                            <td className="px-5 py-3.5 text-right">
+                            <td className="px-2 sm:px-5 py-3 text-right">
                               {team.total === null
                                 ? <span className="text-gray-400 text-sm">—</span>
                                 : <TeamScoreCell val={team.total} />
@@ -260,19 +260,19 @@ export default function Scoreboard() {
                           </tr>
                           {isExpanded && (
                             <tr key={`${team.team_id}-drawer`} className="bg-gray-50 border-b border-gray-200">
-                              <td colSpan={7} className="px-4 pb-4 pt-2">
+                              <td colSpan={7} className="px-2 pb-3 pt-2">
                                 <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-                                  <table className="w-full min-w-[560px]">
+                                  <table className="w-full min-w-[440px]">
                                     <thead>
                                       <tr className="bg-gray-50 border-b border-gray-200 text-gray-400 uppercase tracking-wider" style={{fontSize:'10px'}}>
-                                        <th className="text-center px-3 py-2 font-medium">Pos</th>
-                                        <th className="text-left px-4 py-2 font-medium">Player</th>
-                                        <th className="text-center px-3 py-2 font-medium">Thru</th>
-                                        <th className="text-center px-3 py-2 font-medium border-l border-gray-200">R1</th>
-                                        <th className="text-center px-3 py-2 font-medium">R2</th>
-                                        <th className="text-center px-3 py-2 font-medium">R3</th>
-                                        <th className="text-center px-3 py-2 font-medium">R4</th>
-                                        <th className="text-center px-3 py-2 font-medium border-l border-gray-200">Total</th>
+                                        <th className="text-center px-2 py-2 font-medium">Pos</th>
+                                        <th className="text-left px-2 py-2 font-medium">Player</th>
+                                        <th className="text-center px-2 py-2 font-medium">Thru</th>
+                                        <th className="text-center px-2 py-2 font-medium border-l border-gray-200">R1</th>
+                                        <th className="text-center px-2 py-2 font-medium">R2</th>
+                                        <th className="text-center px-2 py-2 font-medium">R3</th>
+                                        <th className="text-center px-2 py-2 font-medium">R4</th>
+                                        <th className="text-center px-2 py-2 font-medium border-l border-gray-200">Total</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
@@ -287,23 +287,23 @@ export default function Scoreboard() {
                                         const isCut = CUT_STATUSES.has(player.overallStatus?.toUpperCase() ?? '');
                                         return (
                                           <tr key={player.player_espn_id} className={`hover:bg-slate-50 ${noEligible ? 'opacity-40' : ''}`}>
-                                            <td className="px-3 py-3 text-center font-mono text-gray-400 text-xs">
+                                            <td className="px-2 py-2.5 text-center font-mono text-gray-400 text-xs">
                                               {isCut ? <span className="text-gray-400">CUT</span> : player.rank ?? '—'}
                                             </td>
-                                            <td className="px-4 py-3 text-sm">
+                                            <td className="px-2 py-2.5 text-sm">
                                               <span className={noEligible ? 'line-through text-gray-400 italic' : 'text-gray-800 font-medium'}>
                                                 {player.player_name}
                                               </span>
                                             </td>
-                                            <td className="px-3 py-3 text-center font-mono text-gray-400 text-xs">
+                                            <td className="px-2 py-2.5 text-center font-mono text-gray-400 text-xs">
                                               {isCut ? 'CUT' : player.thru != null ? player.thru : '—'}
                                             </td>
                                             {[1, 2, 3, 4].map((r) => (
-                                              <td key={r} className={`px-3 py-3 text-center${r === 1 ? ' border-l border-gray-200' : ''}`}>
+                                              <td key={r} className={`px-2 py-2.5 text-center${r === 1 ? ' border-l border-gray-200' : ''}`}>
                                                 <RoundCell raw={player.rounds?.[r]} counting={player.counting_rounds?.includes(r)} isCut={isCut} />
                                               </td>
                                             ))}
-                                            <td className="px-3 py-3 text-center border-l border-gray-200">
+                                            <td className="px-2 py-2.5 text-center border-l border-gray-200">
                                               {noEligible
                                                 ? <span className="text-gray-300 text-sm">—</span>
                                                 : <TeamScoreCell val={playerTotal(player.rounds)} />

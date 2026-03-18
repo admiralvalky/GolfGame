@@ -57,26 +57,26 @@ export default function Season() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-        <table className="w-full min-w-[500px]">
+        <table className="w-full min-w-[320px]">
           <thead>
             <tr className="bg-golf-dark text-white text-xs uppercase tracking-wide">
-              <th className="text-left px-5 py-3 font-medium w-10">#</th>
-              <th className="text-left px-3 py-3 font-medium">Team</th>
+              <th className="text-left px-2 sm:px-5 py-2.5 font-medium w-8">#</th>
+              <th className="text-left px-2 sm:px-3 py-2.5 font-medium">Team</th>
               {tournaments.map((t) => (
                 <th
                   key={t.id}
-                  className="text-right px-3 py-3 font-medium max-w-[100px]"
+                  className="text-right px-2 sm:px-3 py-2.5 font-medium"
                   title={t.name}
                 >
                   <Link
                     to={`/scoreboard?t=${t.id}`}
-                    className="hover:text-golf-light transition-colors truncate block max-w-[80px] ml-auto"
+                    className="hover:text-golf-light transition-colors truncate block max-w-[60px] sm:max-w-[80px] ml-auto"
                   >
-                    {t.name.length > 12 ? t.name.slice(0, 12) + '…' : t.name}
+                    {t.name.length > 8 ? t.name.slice(0, 8) + '…' : t.name}
                   </Link>
                 </th>
               ))}
-              <th className="text-right px-5 py-3 font-medium">Total</th>
+              <th className="text-right px-2 sm:px-5 py-2.5 font-medium">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -89,16 +89,16 @@ export default function Season() {
                     : ''
                 }`}
               >
-                <td className="px-5 py-3.5 text-sm">
+                <td className="px-2 sm:px-5 py-3 text-sm">
                   <RankBadge rank={i + 1} />
                 </td>
-                <td className="px-3 py-3.5 font-semibold text-sm text-gray-800">
+                <td className="px-2 sm:px-3 py-3 font-semibold text-sm text-gray-800">
                   {team.team_name}
                 </td>
                 {tournaments.map((t) => {
                   const score = team.byTournament[t.id];
                   return (
-                    <td key={t.id} className="px-3 py-3.5 text-right">
+                    <td key={t.id} className="px-2 sm:px-3 py-3 text-right">
                       {score === null || score === undefined ? (
                         <span className="text-gray-300 text-sm">—</span>
                       ) : (
@@ -110,7 +110,7 @@ export default function Season() {
                     </td>
                   );
                 })}
-                <td className="px-5 py-3.5 text-right">
+                <td className="px-2 sm:px-5 py-3 text-right">
                   {team.played === 0 ? (
                     <span className="text-gray-300 text-sm">—</span>
                   ) : (
