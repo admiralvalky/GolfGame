@@ -107,6 +107,45 @@ function saveScoreMapToDb(espnTournamentId, scoreMap) {
   insertAll(scoreMap);
 }
 
+// Fetch per-round scores from ESPN's core API (used as fallback when the scoreboard
+// API stops returning linescore displayValues for completed tournaments).
+async function fetchRoundsFromCoreApi(espnTournamentId, playerIds) {
+  const idSet = new Set(playerIds);
+  const baseUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${espnTournamentId}/competitions/${espnTournamentId}`;
+  const competitorsUrl = `${baseUrl}/competitors?limit=300&lang=en&region=us`;
+
+  const res = await fetch(competitorsUrl, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)' },
+  });
+  if (!res.ok) throw new Error(`Core API competitors fetch failed: ${res.status}`);
+  const json = await res.json();
+  const allCompetitors = (json.items ?? []).filter(c => idSet.size === 0 || idSet.has(c.id));
+
+  const roundsMap = new Map();
+  const BATCH = 20;
+  for (let i = 0; i < allCompetitors.length; i += BATCH) {
+    await Promise.all(
+      allCompetitors.slice(i, i + BATCH).map(async (comp) => {
+        try {
+          const lsRes = await fetch(`${baseUrl}/competitors/${comp.id}/linescores?lang=en&region=us`, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)' },
+          });
+          if (!lsRes.ok) return;
+          const lsJson = await lsRes.json();
+          const rounds = {};
+          for (const ls of lsJson.items ?? []) {
+            if (ls.period && ls.displayValue != null) {
+              rounds[ls.period] = ls.displayValue.trim();
+            }
+          }
+          roundsMap.set(comp.id, rounds);
+        } catch (_) { /* skip individual player failures */ }
+      })
+    );
+  }
+  return roundsMap;
+}
+
 async function fetchPlayerScores(espnTournamentId, status = '') {
   const now = Date.now();
   const cached = scoreCache.get(espnTournamentId);
@@ -162,6 +201,21 @@ async function fetchPlayerScores(espnTournamentId, status = '') {
       overallStatus: deriveOverallStatus(c, linescores, maxRound),
       totalScore: String(c.score ?? '').trim(),
     });
+  }
+
+  // If the scoreboard API returned competitors but no round scores (ESPN strips
+  // linescore displayValues for completed tournaments), fall back to the core API.
+  const hasRoundData = [...scoreMap.values()].some(d => Object.keys(d.rounds).length > 0);
+  if (!hasRoundData) {
+    console.log(`Scoreboard API has no round data for ${espnTournamentId} — fetching from core API`);
+    try {
+      const coreRounds = await fetchRoundsFromCoreApi(espnTournamentId, [...scoreMap.keys()]);
+      for (const [id, rounds] of coreRounds) {
+        if (scoreMap.has(id)) scoreMap.get(id).rounds = rounds;
+      }
+    } catch (err) {
+      console.error(`Core API fallback failed for ${espnTournamentId}:`, err.message);
+    }
   }
 
   // Third pass: compute display ranks (e.g. "1", "T4") for active players
