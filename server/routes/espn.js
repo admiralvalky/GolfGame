@@ -38,7 +38,7 @@ router.get('/schedule', async (req, res) => {
 
   try {
     const listRes = await fetch(
-      `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/seasons/${year}/events?limit=200&lang=en&region=us`,
+      `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/seasons/${year}/types/2/events?limit=200&lang=en&region=us`,
       { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)' } }
     );
     if (!listRes.ok) throw new Error(`ESPN seasons list: ${listRes.status}`);
