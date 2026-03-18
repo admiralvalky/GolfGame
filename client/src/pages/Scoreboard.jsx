@@ -15,17 +15,18 @@ function TeamRoundScore({ val }) {
 }
 
 function RankBadge({ rank }) {
-  if (rank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-400 text-white text-xs font-bold">1</span>;
-  if (rank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-300 text-gray-700 text-xs font-bold">2</span>;
-  if (rank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-orange-300 text-white text-xs font-bold">3</span>;
-  return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-gray-500 text-xs font-bold">{rank}</span>;
+  const base = 'inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-xs font-bold flex-shrink-0';
+  if (rank === 1) return <span className={`${base} bg-amber-400 text-white`}>1</span>;
+  if (rank === 2) return <span className={`${base} bg-gray-300 text-gray-700`}>2</span>;
+  if (rank === 3) return <span className={`${base} bg-orange-300 text-white`}>3</span>;
+  return <span className={`${base} bg-gray-100 text-gray-500`}>{rank}</span>;
 }
 
 function TeamScoreCell({ val }) {
   if (val === null || val === undefined) return <span className="text-gray-300">—</span>;
   const isOver = val > 0;
   return (
-    <span className={`inline-block font-semibold font-mono px-2 py-0.5 rounded border border-gray-800 ${
+    <span className={`inline-block font-semibold font-mono text-xs sm:text-sm px-1.5 sm:px-2 py-0.5 rounded border border-gray-800 whitespace-nowrap ${
       isOver ? 'bg-red-50 text-red-800' : 'bg-green-100 text-gray-900'
     }`}>
       {val === 0 ? 'E' : val > 0 ? `+${val}` : String(val)}
@@ -40,7 +41,7 @@ function RoundCell({ raw, counting, isCut }) {
   const numeric = s === 'E' ? 0 : parseInt(s, 10);
   const isNum = !isNaN(numeric);
   return (
-    <span className={`inline-block text-sm font-mono px-1.5 py-0.5 rounded ${
+    <span className={`inline-block text-xs sm:text-sm font-mono px-1 sm:px-1.5 py-0.5 rounded ${
       counting ? 'bg-emerald-700 text-white font-semibold shadow-sm'
       : isNum && numeric > 0 ? 'text-rose-600'
       : 'text-gray-600'
@@ -61,6 +62,19 @@ function playerTotal(rounds) {
 }
 
 const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF', 'W/D']);
+
+/* Shared cell class strings for consistency */
+const COL = {
+  rank:   'pl-2 sm:pl-4 pr-1 py-2.5 sm:py-3 whitespace-nowrap',
+  team:   'px-1 sm:px-3 py-2.5 sm:py-3',
+  round:  'px-1.5 sm:px-4 py-2.5 sm:py-3 text-right whitespace-nowrap',
+  total:  'pl-1.5 sm:pl-4 pr-2.5 sm:pr-5 py-2.5 sm:py-3 text-right whitespace-nowrap',
+  /* Player drawer variants — slightly less vertical padding */
+  dRank:  'pl-2 sm:pl-4 pr-1 py-2 whitespace-nowrap text-center',
+  dTeam:  'px-1 sm:px-3 py-2',
+  dRound: 'px-1.5 sm:px-4 py-2 text-right whitespace-nowrap',
+  dTotal: 'pl-1.5 sm:pl-4 pr-2.5 sm:pr-5 py-2 text-right whitespace-nowrap',
+};
 
 export default function Scoreboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -192,137 +206,120 @@ export default function Scoreboard() {
                 </Link>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full table-fixed">
-                  <colgroup>
-                    <col style={{ width: '10%' }} />
-                    <col /> {/* Team — takes remaining space */}
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '12%' }} />
-                  </colgroup>
-                  <thead>
-                    <tr className="bg-golf-dark text-white text-xs uppercase tracking-wide">
-                      <th className="text-left px-2 sm:px-5 py-2.5 font-medium">#</th>
-                      <th className="text-left px-2 sm:px-3 py-2.5 font-medium">Team</th>
-                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R1</th>
-                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R2</th>
-                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R3</th>
-                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R4</th>
-                      <th className="text-right pl-1 pr-3 sm:pr-5 py-2.5 font-medium">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.teams.map((team, i) => {
-                      const isLeader = i === 0;
-                      const isExpanded = expandedTeams.has(team.team_id);
-                      const sortedPlayers = [...(team.players ?? [])].sort((a, b) => {
-                        const ta = playerTotal(a.rounds), tb = playerTotal(b.rounds);
-                        if (ta === null && tb === null) return 0;
-                        if (ta === null) return 1;
-                        if (tb === null) return -1;
-                        return ta - tb;
-                      });
-                      return (
-                        <>
-                          {/* Team summary row */}
-                          <tr
-                            key={team.team_id}
-                            className={`border-t border-gray-100 hover:bg-gray-50 transition-colors ${
-                              isLeader
-                                ? 'bg-gradient-to-r from-amber-50 to-yellow-50/30 border-l-4 border-golf-gold'
-                                : ''
-                            }`}
-                          >
-                            <td className="px-2 sm:px-3 py-3 text-sm">
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => toggleTeam(team.team_id)}
-                                  className="text-gray-400 hover:text-golf-green transition-colors p-1 rounded text-xs"
-                                  aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                                >
-                                  {isExpanded ? '▼' : '▶'}
-                                </button>
-                                <RankBadge rank={i + 1} />
-                              </div>
-                            </td>
-                            <td className="px-2 sm:px-3 py-3 max-w-0">
-                              <Link
-                                to={`/team/${team.team_id}?t=${activeTournamentId}`}
-                                className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm block truncate"
-                              >
-                                {team.team_name}
-                              </Link>
-                            </td>
-                            <td className="px-1 sm:px-3 py-3 text-right text-sm">
-                              <TeamRoundScore val={team.rounds?.[1]} />
-                            </td>
-                            <td className="px-1 sm:px-3 py-3 text-right text-sm">
-                              <TeamRoundScore val={team.rounds?.[2]} />
-                            </td>
-                            <td className="px-1 sm:px-3 py-3 text-right text-sm">
-                              <TeamRoundScore val={team.rounds?.[3]} />
-                            </td>
-                            <td className="px-1 sm:px-3 py-3 text-right text-sm">
-                              <TeamRoundScore val={team.rounds?.[4]} />
-                            </td>
-                            <td className="pl-1 pr-3 sm:pr-5 py-3 text-right">
-                              {team.total === null
-                                ? <span className="text-gray-400 text-sm">—</span>
-                                : <TeamScoreCell val={team.total} />
-                              }
-                            </td>
-                          </tr>
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-golf-dark text-white text-xs uppercase tracking-wide">
+                    <th className={`text-left ${COL.rank} font-medium`}>#</th>
+                    <th className={`text-left ${COL.team} font-medium`}>Team</th>
+                    <th className={`${COL.round} font-medium`}>R1</th>
+                    <th className={`${COL.round} font-medium`}>R2</th>
+                    <th className={`${COL.round} font-medium`}>R3</th>
+                    <th className={`${COL.round} font-medium`}>R4</th>
+                    <th className={`${COL.total} font-medium`}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.teams.map((team, i) => {
+                    const isLeader = i === 0;
+                    const isExpanded = expandedTeams.has(team.team_id);
+                    const sortedPlayers = [...(team.players ?? [])].sort((a, b) => {
+                      const ta = playerTotal(a.rounds), tb = playerTotal(b.rounds);
+                      if (ta === null && tb === null) return 0;
+                      if (ta === null) return 1;
+                      if (tb === null) return -1;
+                      return ta - tb;
+                    });
+                    return (
+                      <>
+                        {/* Team summary row */}
+                        <tr
+                          key={team.team_id}
+                          onClick={() => toggleTeam(team.team_id)}
+                          className={`border-t border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
+                            isLeader
+                              ? 'bg-gradient-to-r from-amber-50 to-yellow-50/30 border-l-4 border-golf-gold'
+                              : ''
+                          }`}
+                        >
+                          <td className={`${COL.rank} text-sm`}>
+                            <div className="flex items-center gap-1">
+                              <span className="text-gray-400 text-[10px] w-3 text-center flex-shrink-0">
+                                {isExpanded ? '▼' : '▶'}
+                              </span>
+                              <RankBadge rank={i + 1} />
+                            </div>
+                          </td>
+                          <td className={COL.team}>
+                            <Link
+                              to={`/team/${team.team_id}?t=${activeTournamentId}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
+                            >
+                              {team.team_name}
+                            </Link>
+                          </td>
+                          <td className={`${COL.round} text-sm`}>
+                            <TeamRoundScore val={team.rounds?.[1]} />
+                          </td>
+                          <td className={`${COL.round} text-sm`}>
+                            <TeamRoundScore val={team.rounds?.[2]} />
+                          </td>
+                          <td className={`${COL.round} text-sm`}>
+                            <TeamRoundScore val={team.rounds?.[3]} />
+                          </td>
+                          <td className={`${COL.round} text-sm`}>
+                            <TeamRoundScore val={team.rounds?.[4]} />
+                          </td>
+                          <td className={COL.total}>
+                            {team.total === null
+                              ? <span className="text-gray-400 text-sm">—</span>
+                              : <TeamScoreCell val={team.total} />
+                            }
+                          </td>
+                        </tr>
 
-                          {/* Expanded player rows — inline in the same table, columns align perfectly */}
-                          {isExpanded && sortedPlayers.map((player, pi) => {
-                            const noEligible = player.eligible_rounds?.length === 0;
-                            const isCut = CUT_STATUSES.has(player.overallStatus?.toUpperCase() ?? '');
-                            const isLast = pi === sortedPlayers.length - 1;
-                            return (
-                              <tr
-                                key={`${team.team_id}-${player.player_espn_id}`}
-                                className={`bg-gray-50 ${noEligible ? 'opacity-40' : ''} ${isLast ? 'border-b-2 border-gray-200' : 'border-t border-gray-100'}`}
-                              >
-                                {/* Pos — aligns with # column */}
-                                <td className="px-2 sm:px-3 py-2 text-center">
-                                  <span className="font-mono text-gray-400 text-xs">
-                                    {isCut ? 'CUT' : player.rank ?? '—'}
-                                  </span>
+                        {/* Expanded player rows */}
+                        {isExpanded && sortedPlayers.map((player, pi) => {
+                          const noEligible = player.eligible_rounds?.length === 0;
+                          const isCut = CUT_STATUSES.has(player.overallStatus?.toUpperCase() ?? '');
+                          const isLast = pi === sortedPlayers.length - 1;
+                          return (
+                            <tr
+                              key={`${team.team_id}-${player.player_espn_id}`}
+                              className={`bg-gray-50 ${noEligible ? 'opacity-40' : ''} ${isLast ? 'border-b-2 border-gray-200' : 'border-t border-gray-100'}`}
+                            >
+                              <td className={COL.dRank}>
+                                <span className="font-mono text-gray-400 text-xs">
+                                  {isCut ? 'CUT' : player.rank ?? '—'}
+                                </span>
+                              </td>
+                              <td className={COL.dTeam}>
+                                <div className={`text-xs font-medium leading-tight ${noEligible ? 'line-through text-gray-400 italic' : 'text-gray-700'}`}>
+                                  {player.player_name}
+                                </div>
+                                <div className="text-[10px] text-gray-400 mt-0.5">
+                                  {isCut ? 'CUT' : player.thru != null ? `Thru ${player.thru}` : ''}
+                                </div>
+                              </td>
+                              {[1, 2, 3, 4].map((r) => (
+                                <td key={r} className={COL.dRound}>
+                                  <RoundCell raw={player.rounds?.[r]} counting={player.counting_rounds?.includes(r)} isCut={isCut} />
                                 </td>
-                                {/* Player name + Thru — aligns with Team column */}
-                                <td className="px-2 sm:px-3 py-2 max-w-0">
-                                  <div className={`text-xs font-medium leading-tight truncate ${noEligible ? 'line-through text-gray-400 italic' : 'text-gray-700'}`}>
-                                    {player.player_name}
-                                  </div>
-                                  <div className="text-[10px] text-gray-400 mt-0.5">
-                                    {isCut ? 'CUT' : player.thru != null ? `Thru ${player.thru}` : ''}
-                                  </div>
-                                </td>
-                                {/* R1–R4 — aligns with round columns */}
-                                {[1, 2, 3, 4].map((r) => (
-                                  <td key={r} className="px-1 sm:px-3 py-2 text-right">
-                                    <RoundCell raw={player.rounds?.[r]} counting={player.counting_rounds?.includes(r)} isCut={isCut} />
-                                  </td>
-                                ))}
-                                {/* Total — aligns with Total column */}
-                                <td className="pl-1 pr-3 sm:pr-5 py-2 text-right">
-                                  {noEligible
-                                    ? <span className="text-gray-300 text-sm">—</span>
-                                    : <TeamScoreCell val={playerTotal(player.rounds)} />
-                                  }
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                              ))}
+                              <td className={COL.dTotal}>
+                                {noEligible
+                                  ? <span className="text-gray-300 text-sm">—</span>
+                                  : <TeamScoreCell val={playerTotal(player.rounds)} />
+                                }
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </div>
         </>
