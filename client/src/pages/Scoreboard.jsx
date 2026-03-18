@@ -205,15 +205,23 @@ export default function Scoreboard() {
                       <th className="text-right px-2 sm:px-5 py-2.5 font-medium">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody>
                     {data.teams.map((team, i) => {
                       const isLeader = i === 0;
                       const isExpanded = expandedTeams.has(team.team_id);
+                      const sortedPlayers = [...(team.players ?? [])].sort((a, b) => {
+                        const ta = playerTotal(a.rounds), tb = playerTotal(b.rounds);
+                        if (ta === null && tb === null) return 0;
+                        if (ta === null) return 1;
+                        if (tb === null) return -1;
+                        return ta - tb;
+                      });
                       return (
                         <>
+                          {/* Team summary row */}
                           <tr
                             key={team.team_id}
-                            className={`hover:bg-gray-50 transition-colors ${
+                            className={`border-t border-gray-100 hover:bg-gray-50 transition-colors ${
                               isLeader
                                 ? 'bg-gradient-to-r from-amber-50 to-yellow-50/30 border-l-4 border-golf-gold'
                                 : ''
@@ -258,66 +266,48 @@ export default function Scoreboard() {
                               }
                             </td>
                           </tr>
-                          {isExpanded && (
-                            <tr key={`${team.team_id}-drawer`} className="bg-gray-50 border-b border-gray-200">
-                              <td colSpan={7} className="px-2 pb-3 pt-2">
-                                <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-                                  <table className="w-full min-w-[440px]">
-                                    <thead>
-                                      <tr className="bg-gray-50 border-b border-gray-200 text-gray-400 uppercase tracking-wider" style={{fontSize:'10px'}}>
-                                        <th className="text-center px-2 py-2 font-medium">Pos</th>
-                                        <th className="text-left px-2 py-2 font-medium">Player</th>
-                                        <th className="text-center px-2 py-2 font-medium">Thru</th>
-                                        <th className="text-center px-2 py-2 font-medium border-l border-gray-200">R1</th>
-                                        <th className="text-center px-2 py-2 font-medium">R2</th>
-                                        <th className="text-center px-2 py-2 font-medium">R3</th>
-                                        <th className="text-center px-2 py-2 font-medium">R4</th>
-                                        <th className="text-center px-2 py-2 font-medium border-l border-gray-200">Total</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                      {[...(team.players ?? [])].sort((a, b) => {
-                                        const ta = playerTotal(a.rounds), tb = playerTotal(b.rounds);
-                                        if (ta === null && tb === null) return 0;
-                                        if (ta === null) return 1;
-                                        if (tb === null) return -1;
-                                        return ta - tb;
-                                      }).map((player) => {
-                                        const noEligible = player.eligible_rounds?.length === 0;
-                                        const isCut = CUT_STATUSES.has(player.overallStatus?.toUpperCase() ?? '');
-                                        return (
-                                          <tr key={player.player_espn_id} className={`hover:bg-slate-50 ${noEligible ? 'opacity-40' : ''}`}>
-                                            <td className="px-2 py-2.5 text-center font-mono text-gray-400 text-xs">
-                                              {isCut ? <span className="text-gray-400">CUT</span> : player.rank ?? '—'}
-                                            </td>
-                                            <td className="px-2 py-2.5 text-sm">
-                                              <span className={noEligible ? 'line-through text-gray-400 italic' : 'text-gray-800 font-medium'}>
-                                                {player.player_name}
-                                              </span>
-                                            </td>
-                                            <td className="px-2 py-2.5 text-center font-mono text-gray-400 text-xs">
-                                              {isCut ? 'CUT' : player.thru != null ? player.thru : '—'}
-                                            </td>
-                                            {[1, 2, 3, 4].map((r) => (
-                                              <td key={r} className={`px-2 py-2.5 text-center${r === 1 ? ' border-l border-gray-200' : ''}`}>
-                                                <RoundCell raw={player.rounds?.[r]} counting={player.counting_rounds?.includes(r)} isCut={isCut} />
-                                              </td>
-                                            ))}
-                                            <td className="px-2 py-2.5 text-center border-l border-gray-200">
-                                              {noEligible
-                                                ? <span className="text-gray-300 text-sm">—</span>
-                                                : <TeamScoreCell val={playerTotal(player.rounds)} />
-                                              }
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
+
+                          {/* Expanded player rows — inline in the same table, columns align perfectly */}
+                          {isExpanded && sortedPlayers.map((player, pi) => {
+                            const noEligible = player.eligible_rounds?.length === 0;
+                            const isCut = CUT_STATUSES.has(player.overallStatus?.toUpperCase() ?? '');
+                            const isLast = pi === sortedPlayers.length - 1;
+                            return (
+                              <tr
+                                key={`${team.team_id}-${player.player_espn_id}`}
+                                className={`bg-gray-50 ${noEligible ? 'opacity-40' : ''} ${isLast ? 'border-b-2 border-gray-200' : 'border-t border-gray-100'}`}
+                              >
+                                {/* Pos — aligns with # column */}
+                                <td className="px-2 sm:px-3 py-2 text-center">
+                                  <span className="font-mono text-gray-400 text-xs">
+                                    {isCut ? 'CUT' : player.rank ?? '—'}
+                                  </span>
+                                </td>
+                                {/* Player name + Thru — aligns with Team column */}
+                                <td className="px-2 sm:px-3 py-2">
+                                  <div className={`text-xs font-medium leading-tight ${noEligible ? 'line-through text-gray-400 italic' : 'text-gray-700'}`}>
+                                    {player.player_name}
+                                  </div>
+                                  <div className="text-[10px] text-gray-400 mt-0.5">
+                                    {isCut ? 'CUT' : player.thru != null ? `Thru ${player.thru}` : ''}
+                                  </div>
+                                </td>
+                                {/* R1–R4 — aligns with round columns */}
+                                {[1, 2, 3, 4].map((r) => (
+                                  <td key={r} className="px-2 sm:px-3 py-2 text-right">
+                                    <RoundCell raw={player.rounds?.[r]} counting={player.counting_rounds?.includes(r)} isCut={isCut} />
+                                  </td>
+                                ))}
+                                {/* Total — aligns with Total column */}
+                                <td className="px-2 sm:px-5 py-2 text-right">
+                                  {noEligible
+                                    ? <span className="text-gray-300 text-sm">—</span>
+                                    : <TeamScoreCell val={playerTotal(player.rounds)} />
+                                  }
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </>
                       );
                     })}
