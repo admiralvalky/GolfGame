@@ -193,15 +193,15 @@ export default function Scoreboard() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[380px] table-fixed">
+                <table className="w-full table-fixed">
                   <colgroup>
-                    <col className="w-14 sm:w-16" />
+                    <col style={{ width: '10%' }} />
                     <col /> {/* Team — takes remaining space */}
-                    <col className="w-9 sm:w-11" />
-                    <col className="w-9 sm:w-11" />
-                    <col className="w-9 sm:w-11" />
-                    <col className="w-9 sm:w-11" />
-                    <col className="w-14 sm:w-16" />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '12%' }} />
                   </colgroup>
                   <thead>
                     <tr className="bg-golf-dark text-white text-xs uppercase tracking-wide">
@@ -211,7 +211,7 @@ export default function Scoreboard() {
                       <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R2</th>
                       <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R3</th>
                       <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R4</th>
-                      <th className="text-right px-2 sm:px-5 py-2.5 font-medium">Total</th>
+                      <th className="text-right pl-1 pr-3 sm:pr-5 py-2.5 font-medium">Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -256,19 +256,19 @@ export default function Scoreboard() {
                                 {team.team_name}
                               </Link>
                             </td>
-                            <td className="px-2 sm:px-3 py-3 text-right text-sm">
+                            <td className="px-1 sm:px-3 py-3 text-right text-sm">
                               <TeamRoundScore val={team.rounds?.[1]} />
                             </td>
-                            <td className="px-2 sm:px-3 py-3 text-right text-sm">
+                            <td className="px-1 sm:px-3 py-3 text-right text-sm">
                               <TeamRoundScore val={team.rounds?.[2]} />
                             </td>
-                            <td className="px-2 sm:px-3 py-3 text-right text-sm">
+                            <td className="px-1 sm:px-3 py-3 text-right text-sm">
                               <TeamRoundScore val={team.rounds?.[3]} />
                             </td>
-                            <td className="px-2 sm:px-3 py-3 text-right text-sm">
+                            <td className="px-1 sm:px-3 py-3 text-right text-sm">
                               <TeamRoundScore val={team.rounds?.[4]} />
                             </td>
-                            <td className="px-2 sm:px-5 py-3 text-right">
+                            <td className="pl-1 pr-3 sm:pr-5 py-3 text-right">
                               {team.total === null
                                 ? <span className="text-gray-400 text-sm">—</span>
                                 : <TeamScoreCell val={team.total} />
@@ -303,12 +303,12 @@ export default function Scoreboard() {
                                 </td>
                                 {/* R1–R4 — aligns with round columns */}
                                 {[1, 2, 3, 4].map((r) => (
-                                  <td key={r} className="px-2 sm:px-3 py-2 text-right">
+                                  <td key={r} className="px-1 sm:px-3 py-2 text-right">
                                     <RoundCell raw={player.rounds?.[r]} counting={player.counting_rounds?.includes(r)} isCut={isCut} />
                                   </td>
                                 ))}
                                 {/* Total — aligns with Total column */}
-                                <td className="px-2 sm:px-5 py-2 text-right">
+                                <td className="pl-1 pr-3 sm:pr-5 py-2 text-right">
                                   {noEligible
                                     ? <span className="text-gray-300 text-sm">—</span>
                                     : <TeamScoreCell val={playerTotal(player.rounds)} />
