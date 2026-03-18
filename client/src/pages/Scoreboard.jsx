@@ -193,10 +193,19 @@ export default function Scoreboard() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[380px]">
+                <table className="w-full min-w-[380px] table-fixed">
+                  <colgroup>
+                    <col className="w-14 sm:w-16" />
+                    <col /> {/* Team — takes remaining space */}
+                    <col className="w-9 sm:w-11" />
+                    <col className="w-9 sm:w-11" />
+                    <col className="w-9 sm:w-11" />
+                    <col className="w-9 sm:w-11" />
+                    <col className="w-14 sm:w-16" />
+                  </colgroup>
                   <thead>
                     <tr className="bg-golf-dark text-white text-xs uppercase tracking-wide">
-                      <th className="text-left px-2 sm:px-5 py-2.5 font-medium w-10">#</th>
+                      <th className="text-left px-2 sm:px-5 py-2.5 font-medium">#</th>
                       <th className="text-left px-2 sm:px-3 py-2.5 font-medium">Team</th>
                       <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R1</th>
                       <th className="text-right px-2 sm:px-3 py-2.5 font-medium">R2</th>
@@ -239,10 +248,10 @@ export default function Scoreboard() {
                                 <RankBadge rank={i + 1} />
                               </div>
                             </td>
-                            <td className="px-2 sm:px-3 py-3">
+                            <td className="px-2 sm:px-3 py-3 max-w-0">
                               <Link
                                 to={`/team/${team.team_id}?t=${activeTournamentId}`}
-                                className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm"
+                                className="font-semibold text-gray-800 hover:text-golf-green transition-colors text-sm block truncate"
                               >
                                 {team.team_name}
                               </Link>
@@ -284,8 +293,8 @@ export default function Scoreboard() {
                                   </span>
                                 </td>
                                 {/* Player name + Thru — aligns with Team column */}
-                                <td className="px-2 sm:px-3 py-2">
-                                  <div className={`text-xs font-medium leading-tight ${noEligible ? 'line-through text-gray-400 italic' : 'text-gray-700'}`}>
+                                <td className="px-2 sm:px-3 py-2 max-w-0">
+                                  <div className={`text-xs font-medium leading-tight truncate ${noEligible ? 'line-through text-gray-400 italic' : 'text-gray-700'}`}>
                                     {player.player_name}
                                   </div>
                                   <div className="text-[10px] text-gray-400 mt-0.5">
