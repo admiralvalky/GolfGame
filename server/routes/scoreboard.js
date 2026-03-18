@@ -211,7 +211,24 @@ async function fetchPlayerScores(espnTournamentId, status = '') {
     try {
       const coreRounds = await fetchRoundsFromCoreApi(espnTournamentId, [...scoreMap.keys()]);
       for (const [id, rounds] of coreRounds) {
-        if (scoreMap.has(id)) scoreMap.get(id).rounds = rounds;
+        if (!scoreMap.has(id)) continue;
+        const entry = scoreMap.get(id);
+        entry.rounds = rounds;
+
+        // ESPN scoreboard returns stale total scores for completed events — recompute from rounds.
+        const roundNums = Object.values(rounds).map(s => {
+          const t = String(s).trim().toUpperCase();
+          if (t === 'E') return 0;
+          const n = parseInt(t, 10);
+          return isNaN(n) ? null : n;
+        }).filter(n => n !== null);
+        if (roundNums.length > 0) {
+          const tot = roundNums.reduce((a, b) => a + b, 0);
+          entry.totalScore = tot === 0 ? 'E' : tot > 0 ? `+${tot}` : String(tot);
+        }
+
+        // Mark all players with round data as finished.
+        if (Object.keys(rounds).length > 0) entry.thru = 'F';
       }
     } catch (err) {
       console.error(`Core API fallback failed for ${espnTournamentId}:`, err.message);
