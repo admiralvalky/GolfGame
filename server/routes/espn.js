@@ -6,6 +6,7 @@ const router = Router();
 // In-memory cache: { key: { data, expiresAt } }
 const cache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const SCHEDULE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 async function cachedFetch(url) {
   const now = Date.now();
@@ -22,6 +23,65 @@ async function cachedFetch(url) {
   cache.set(url, { data, expiresAt: now + CACHE_TTL_MS });
   return data;
 }
+
+/**
+ * GET /api/espn/schedule?year=YYYY
+ * Returns all PGA tournaments for a given season year, cached 24h.
+ */
+router.get('/schedule', async (req, res) => {
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+  const cacheKey = `schedule_${year}`;
+
+  const now = Date.now();
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return res.json(cached.data);
+
+  try {
+    const listRes = await fetch(
+      `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/seasons/${year}/events?limit=200&lang=en&region=us`,
+      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)' } }
+    );
+    if (!listRes.ok) throw new Error(`ESPN seasons list: ${listRes.status}`);
+    const listData = await listRes.json();
+
+    const eventIds = (listData.items ?? [])
+      .map(ref => ref.$ref?.match(/\/events\/(\d+)/)?.[1])
+      .filter(Boolean);
+
+    // Batch-fetch event details in parallel
+    const BATCH = 20;
+    const tournaments = [];
+    for (let i = 0; i < eventIds.length; i += BATCH) {
+      const details = await Promise.all(
+        eventIds.slice(i, i + BATCH).map(id =>
+          fetch(
+            `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${id}?lang=en&region=us`,
+            { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)' } }
+          ).then(r => r.ok ? r.json() : null).catch(() => null)
+        )
+      );
+      for (const d of details) {
+        if (!d) continue;
+        tournaments.push({
+          id: String(d.id),
+          name: d.name ?? d.shortName ?? 'Unknown',
+          startDate: d.date ?? null,
+          endDate: d.endDate ?? null,
+          status: d.status?.type?.name ?? 'unknown',
+          statusDetail: d.status?.type?.description ?? '',
+        });
+      }
+    }
+
+    tournaments.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    const result = { tournaments, year };
+    cache.set(cacheKey, { data: result, expiresAt: now + SCHEDULE_CACHE_TTL });
+    res.json(result);
+  } catch (err) {
+    console.error('ESPN schedule error:', err.message);
+    res.status(502).json({ error: 'Failed to fetch ESPN schedule', detail: err.message });
+  }
+});
 
 /**
  * GET /api/espn/tournaments

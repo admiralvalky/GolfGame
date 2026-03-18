@@ -4,6 +4,7 @@ const api = axios.create({ baseURL: '/api' });
 
 // ── ESPN ─────────────────────────────────────────────────────────────────────
 export const getEspnTournaments = () => api.get('/espn/tournaments').then((r) => r.data);
+export const getEspnSchedule = (year) => api.get(`/espn/schedule?year=${year}`).then((r) => r.data);
 export const getEspnPlayers = (tournamentId) =>
   api.get(`/espn/tournaments/${tournamentId}/players`).then((r) => r.data);
 export const getEspnTournamentDetails = (espnId) =>
