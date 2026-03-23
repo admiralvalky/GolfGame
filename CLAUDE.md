@@ -95,3 +95,25 @@ pool-err-fg      #fca5a5   Error state text
 ```
 
 `pool-under` (#4ade80) doubles as the primary CTA / active-state color (buttons, active tabs, active nav).
+
+## Project Structure
+
+The Golf Pool app repo is located at `~/Desktop/ClaudeCode/GolfGame/` (not the parent `ClaudeCode/` directory). Always `cd` into `GolfGame/` before running git commands.
+
+## API Integration
+
+When working with ESPN API data, **ALWAYS inspect the actual API response first** before writing parsing logic. Never guess at field names or data structure — use `curl` to fetch and log real responses:
+
+```bash
+curl "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event={espnTournamentId}" | jq . | head -100
+```
+
+Inspect the full structure before touching any parsing code in `server/routes/scoreboard.js` or `server/routes/espn.js`.
+
+## Workflow
+
+After implementing a fix, **verify it works by checking actual rendered/returned data before committing**. For UI fixes especially, test with real API data, not assumptions.
+
+- Start the dev server (`npm run dev` from `GolfGame/`) and confirm the fix renders correctly
+- For API/parsing fixes, `curl` the ESPN endpoint and confirm the parsed output matches expectations
+- Never commit a fix that hasn't been verified against live or realistic data
