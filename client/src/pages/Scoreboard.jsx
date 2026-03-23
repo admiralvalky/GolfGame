@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getTournaments, getScoreboard } from '../api.js';
 import { useAutoRefresh } from '../hooks/useAutoRefresh.js';
@@ -230,10 +230,9 @@ export default function Scoreboard() {
                       return ta - tb;
                     });
                     return (
-                      <>
+                      <Fragment key={team.team_id}>
                         {/* Team summary row */}
                         <tr
-                          key={team.team_id}
                           onClick={() => toggleTeam(team.team_id)}
                           className={`border-t border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
                             isLeader
@@ -315,7 +314,7 @@ export default function Scoreboard() {
                             </tr>
                           );
                         })}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </tbody>
