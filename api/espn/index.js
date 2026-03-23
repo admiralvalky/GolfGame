@@ -7,12 +7,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // req.query.path is an array of path segments after /api/espn/
-  const segments = req.query.path ?? [];
-  const route = segments.join('/');
+  const route = req.query.route ?? '';
 
   try {
-    // GET /api/espn/tournaments
+    // GET /api/espn?route=tournaments
     if (route === 'tournaments') {
       const data = await espnFetch(
         'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard'
@@ -30,7 +28,7 @@ export default async function handler(req, res) {
       return res.json({ tournaments });
     }
 
-    // GET /api/espn/schedule?year=YYYY
+    // GET /api/espn?route=schedule&year=YYYY
     if (route === 'schedule') {
       const year = parseInt(req.query.year) || new Date().getFullYear();
       const listRes = await fetch(
@@ -71,9 +69,10 @@ export default async function handler(req, res) {
       return res.json({ tournaments, year });
     }
 
-    // GET /api/espn/tournaments/:id/players
-    if (segments.length === 3 && segments[0] === 'tournaments' && segments[2] === 'players') {
-      const id = segments[1];
+    // GET /api/espn?route=players&id=XXX
+    if (route === 'players') {
+      const id = req.query.id;
+      if (!id) return res.status(400).json({ error: 'id query parameter required' });
       const data = await espnFetch(
         `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${id}`
       );
@@ -88,9 +87,10 @@ export default async function handler(req, res) {
       return res.json({ players, tournamentId: id });
     }
 
-    // GET /api/espn/tournaments/:id/details
-    if (segments.length === 3 && segments[0] === 'tournaments' && segments[2] === 'details') {
-      const id = segments[1];
+    // GET /api/espn?route=details&id=XXX
+    if (route === 'details') {
+      const id = req.query.id;
+      if (!id) return res.status(400).json({ error: 'id query parameter required' });
       const data = await espnFetch(
         `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${id}?lang=en&region=us`
       );

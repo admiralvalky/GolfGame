@@ -7,7 +7,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { tournamentId } = req.query;
+  const tournamentId = req.query.tournamentId;
+  if (!tournamentId) return res.status(400).json({ error: 'tournamentId query parameter required' });
 
   const { data: tournament } = await supabase
     .from('tournaments')

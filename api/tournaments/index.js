@@ -94,5 +94,33 @@ export default async function handler(req, res) {
     return res.status(201).json({ tournament });
   }
 
+  if (req.method === 'PATCH') {
+    const id = req.query.id;
+    if (!id) return res.status(400).json({ error: 'id query parameter required' });
+    const { status, end_date } = req.body;
+    if (!status) return res.status(400).json({ error: 'status is required' });
+
+    const { data: existing } = await supabase
+      .from('tournaments')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    const { data: tournament, error } = await supabase
+      .from('tournaments')
+      .update({
+        status: normalizeStatus(status),
+        end_date: end_date ?? existing?.end_date ?? null,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error || !tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+    return res.json({ tournament });
+  }
+
   res.status(405).json({ error: 'Method not allowed' });
 }
