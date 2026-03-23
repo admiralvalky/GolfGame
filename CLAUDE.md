@@ -4,57 +4,64 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-From the repo root (`GolfGame/`):
-
-```bash
-npm run dev          # Start both server (port 3001) and client (port 5173) concurrently
-npm run build        # Install all deps + build React app to client/dist
-npm start            # Run Express server only (production mode)
-```
-
-From `server/`:
-```bash
-node --watch index.js   # Server with file watching
-```
-
 From `client/`:
 ```bash
-npm run dev    # Vite dev server with /api proxy to localhost:3001
+npm run dev    # Vite dev server on port 5173 (frontend only; /api calls need vercel dev)
 npm run build  # Production build → client/dist
 ```
 
+For full-stack local dev (requires Vercel CLI: `npm i -g vercel`):
+```bash
+vercel dev     # Runs Vite frontend + Vercel Functions together on port 3000
+```
+
 No test suite exists yet.
+
+> **Note**: The `server/` directory is the OLD Express + SQLite + Railway architecture. It is no longer deployed or used. Do not modify files in `server/`. All active backend code lives in `api/`.
 
 ## Architecture Overview
 
 This is a golf pool app — users pick 6 players per tournament; the best 2 scores per round count toward the team total.
 
+### Deployment
+
+- **Frontend**: React SPA deployed to **Vercel** (static build from `client/dist`)
+- **Backend**: **Vercel Serverless Functions** in `api/` directory
+- **Database**: **Supabase** (PostgreSQL) — free tier, no persistent disk needed
+- **Live URL**: the `golf-game` Vercel project (single project — `golf-game-7lhd` was a duplicate and has been deleted)
+
+### Why Vercel + Supabase (not Railway + SQLite)
+
+Migrated from Railway (paid, persistent disk required for SQLite) to Vercel + Supabase because both are free. Supabase provides a hosted PostgreSQL database accessible from Vercel's serverless functions via `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` env vars — no persistent disk or long-running server required.
+
 ### Data Flow
 
-1. **Setup** (`/setup`): Admin saves a tournament (pulled from ESPN) to the local SQLite DB
+1. **Setup** (`/setup`): Admin saves a tournament (pulled from ESPN) to Supabase
 2. **Picks** (`/picks/:tournamentId`): Each team selects 6 players from the ESPN live player list
-3. **Scoreboard** (`/scoreboard`): Live team scores, auto-refreshes every 10 min during tournament window
+3. **Home / Scoreboard** (`/`): Live team scores, auto-refreshes every 10 min during tournament window
 4. **Team Detail** (`/team/:teamId`): Per-player breakdown showing which rounds count
 5. **Season** (`/season`): Cumulative standings across all saved tournaments
 
-### Server (`server/`)
+### API (Vercel Functions — `api/`)
 
-- `index.js` — Express entry point; in production, serves `client/dist` as static files with SPA fallback
-- `db.js` — SQLite via `better-sqlite3`; DB path is `DATA_DIR` env var (defaults to `server/`); seeds from `seed-db.js` if no DB exists at startup
-- `scoring.js` — Core scoring logic: `computeTeamScoreByRound` picks the best 2 eligible players per round, returning `counting_rounds` and `eligible_rounds` per player
-- `routes/scoreboard.js` — The most complex route; fetches live ESPN linescore data, infers CUT/WD/MDF status (ESPN's status field is unreliable — status is inferred from linescore depth), computes team scores, assigns ranks
-- `routes/espn.js` — Proxies ESPN scoreboard API with 10-min in-memory cache
-- `routes/picks.js` — Always replaces all picks for a team/tournament atomically (6 players required)
+- `api/tournaments/index.js` — GET/POST/PATCH tournaments; auto-syncs ESPN status on GET
+- `api/picks/index.js` — GET picks by tournament; POST replaces all picks atomically (6 required)
+- `api/teams/index.js` — GET/POST/DELETE teams
+- `api/scoreboard/index.js` — GET ranked team scores for a tournament (live ESPN data)
+- `api/scoreboard/season/standings.js` — GET cumulative season standings
+- `api/_lib/supabase.js` — Supabase client singleton (reads `SUPABASE_URL` + `SUPABASE_SERVICE_KEY`)
+- `api/_lib/espn.js` — ESPN fetch helpers: `fetchPlayerScores`, `extractThru`, `deriveOverallStatus`, `normalizeStatus`; falls back to Supabase `cached_player_scores` table if ESPN is unavailable
+- `api/_lib/scoring.js` — Core scoring logic: `computeTeamScoreByRound` picks the best 2 eligible players per round
 
 ### Client (`client/src/`)
 
-- `api.js` — All API calls; uses relative `/api` base URL (works in both dev via Vite proxy and production via Express static serving)
-- `hooks/useAutoRefresh.js` — Polling hook used by Scoreboard; `intervalMs=null` disables polling
+- `api.js` — All API calls; uses relative `/api` base URL (Vite proxies to `vercel dev` in local dev; same domain in production)
+- `hooks/useAutoRefresh.js` — Polling hook; `intervalMs=null` disables polling
 - `utils/tournament.js` — Date formatting and status label helpers
 
 ### Key Scoring Rule
 
-**Best 2 of 6 per round**: `computeTeamScoreByRound` in `scoring.js` iterates rounds 1–4. For each round, it finds players with a valid (non-null, non-CUT) score, sorts ascending, and takes the lowest 2. Players with `eligible_rounds.length === 0` are fully muted in the UI (CUT with no data).
+**Best 2 of 6 per round**: `computeTeamScoreByRound` in `api/_lib/scoring.js` iterates rounds 1–4. For each round, it finds players with a valid (non-null, non-CUT) score, sorts ascending, and takes the lowest 2. Players with `eligible_rounds.length === 0` are fully muted in the UI.
 
 ### ESPN API
 
@@ -62,14 +69,14 @@ All score data comes from the ESPN scoreboard endpoint:
 ```
 https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event={espnTournamentId}
 ```
-The leaderboard endpoint is avoided — the scoreboard endpoint is more reliable. Per-round scores come from `competitor.linescores[].displayValue`. CUT/WD/MDF status must be inferred (see `deriveOverallStatus` in `scoreboard.js`).
+The leaderboard endpoint is avoided — the scoreboard endpoint is more reliable. Per-round scores come from `competitor.linescores[].displayValue`. CUT/WD/MDF status must be inferred (see `deriveOverallStatus` in `api/_lib/espn.js`). Parsed scores are cached to the Supabase `cached_player_scores` table as a fallback.
 
-### Deployment (Railway)
+### Supabase Tables
 
-- Hosted at `https://precious-analysis-production.up.railway.app`
-- Persistent volume mounted at `/data`; set `DATA_DIR=/data` env var
-- `railway.json` configures build (`npm run build`) and start (`npm start`) commands
-- `server/seed-db.js` contains the initial DB as base64; auto-written to `/data/golf.db` on first boot if missing
+- `tournaments` — id, espn_tournament_id, name, start_date, end_date, status (`upcoming`/`in`/`post`)
+- `teams` — id, name
+- `picks` — team_id, tournament_id, player_espn_id, player_name
+- `cached_player_scores` — espn_tournament_id, player_espn_id, rounds_json, thru, overall_status, total_score, rank, saved_at
 
 ### Custom Tailwind Tokens
 
@@ -108,12 +115,12 @@ When working with ESPN API data, **ALWAYS inspect the actual API response first*
 curl "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event={espnTournamentId}" | jq . | head -100
 ```
 
-Inspect the full structure before touching any parsing code in `server/routes/scoreboard.js` or `server/routes/espn.js`.
+Inspect the full structure before touching any parsing code in `api/_lib/espn.js`.
 
 ## Workflow
 
 After implementing a fix, **verify it works by checking actual rendered/returned data before committing**. For UI fixes especially, test with real API data, not assumptions.
 
-- Start the dev server (`npm run dev` from `GolfGame/`) and confirm the fix renders correctly
+- Start the dev server (`vercel dev` from `GolfGame/`) and confirm the fix renders correctly
 - For API/parsing fixes, `curl` the ESPN endpoint and confirm the parsed output matches expectations
 - Never commit a fix that hasn't been verified against live or realistic data
