@@ -73,10 +73,25 @@ The leaderboard endpoint is avoided — the scoreboard endpoint is more reliable
 
 ### Custom Tailwind Tokens
 
+Dark Golf Heritage theme (`pool.*` namespace):
+
 ```
-golf-green  #2d6a4f
-golf-light  #52b788
-golf-dark   #1b4332
-golf-fairway #40916c
-golf-gold   #d97706
+pool-base        #0d1f15   App background (body)
+pool-surface     #1a3a2a   Cards, rows
+pool-elevated    #0f2318   Drawers, header, bottom nav
+pool-rim         #2d5a3d   Borders, dividers
+pool-primary     #f0fdf4   Headings, team names
+pool-secondary   #86efac   Labels, sub-text
+pool-muted       #6ee7b7   Timestamps, metadata
+pool-faint       #4b7a5e   Empty states, placeholders
+pool-gold        #d4af37   #1 rank, leader highlight
+pool-under       #4ade80   Under-par scores; primary CTA color
+pool-over        #f87171   Over-par scores
+pool-even        #9ca3af   Even par (E / 0)
+pool-counting    #166534   Counting-round badge background
+pool-counting-fg #bbf7d0   Counting-round badge text
+pool-err-bg      #2d1515   Error state backgrounds
+pool-err-fg      #fca5a5   Error state text
 ```
+
+`pool-under` (#4ade80) doubles as the primary CTA / active-state color (buttons, active tabs, active nav).
