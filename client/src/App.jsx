@@ -16,6 +16,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/setup" element={<Setup />} />
+            <Route path="/picks" element={<Picks />} />
             <Route path="/picks/:tournamentId" element={<Picks />} />
             <Route path="/scoreboard" element={<Scoreboard />} />
             <Route path="/team/:teamId" element={<TeamDetail />} />
