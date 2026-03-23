@@ -7,14 +7,14 @@ const CUT_STATUSES = ['CUT', 'WD', 'DQ', 'MDF', 'W/D'];
 
 function TeamScoreCell({ val, className = '' }) {
   if (val === null || val === undefined) {
-    return <span className="text-gray-300">—</span>;
+    return <span className="text-pool-faint">—</span>;
   }
   const isOver = val > 0;
   return (
-    <span className={`inline-block font-semibold font-mono px-2 py-0.5 rounded border border-gray-800 ${
+    <span className={`inline-block font-semibold font-mono px-2 py-0.5 rounded border border-pool-rim ${
       isOver
-        ? 'bg-red-50 text-red-800'
-        : 'bg-green-100 text-gray-900'
+        ? 'bg-red-900/40 text-pool-over'
+        : 'bg-green-900/40 text-pool-under'
     } ${className}`}>
       {val === 0 ? 'E' : val > 0 ? `+${val}` : String(val)}
     </span>
@@ -23,9 +23,9 @@ function TeamScoreCell({ val, className = '' }) {
 
 function RoundCell({ raw, counting, isCut }) {
   if (raw == null && isCut) {
-    return <span className="text-[10px] text-gray-400 font-medium tracking-wide">CUT</span>;
+    return <span className="text-[10px] text-pool-faint font-medium tracking-wide">CUT</span>;
   }
-  if (raw == null) return <span className="text-gray-300 text-sm">—</span>;
+  if (raw == null) return <span className="text-pool-faint text-sm">—</span>;
   const s = String(raw).trim().toUpperCase();
   const numeric = s === 'E' ? 0 : parseInt(s, 10);
   const isNum = !isNaN(numeric);
@@ -33,10 +33,10 @@ function RoundCell({ raw, counting, isCut }) {
     <span
       className={`inline-block text-sm font-mono px-1.5 py-0.5 rounded ${
         counting
-          ? 'bg-emerald-700 text-white font-semibold shadow-sm'
+          ? 'bg-pool-counting text-pool-counting-fg font-bold shadow-sm'
           : isNum && numeric > 0
-          ? 'text-rose-600'
-          : 'text-gray-600'
+          ? 'text-pool-over'
+          : 'text-pool-secondary'
       }`}
     >
       {raw}
@@ -103,12 +103,12 @@ export default function TeamDetail() {
   }
 
   if (loading && !data) {
-    return <div className="flex items-center justify-center h-48 text-gray-400">Loading…</div>;
+    return <div className="flex items-center justify-center h-48 text-pool-muted">Loading…</div>;
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-600">
+      <div className="bg-pool-err-bg border border-red-900 rounded-xl p-6 text-pool-err-fg">
         {error}
       </div>
     );
@@ -117,8 +117,8 @@ export default function TeamDetail() {
   if (!data?.team) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 mb-3">Team not found or has no picks.</p>
-        <Link to="/scoreboard" className="text-golf-green underline">← Back to Scoreboard</Link>
+        <p className="text-pool-faint mb-3">Team not found or has no picks.</p>
+        <Link to="/" className="text-pool-under underline">← Back to Scoreboard</Link>
       </div>
     );
   }
@@ -130,19 +130,19 @@ export default function TeamDetail() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3 flex-wrap">
-          <Link to={`/scoreboard?t=${tournament.id}`} className="text-golf-green text-sm hover:underline">
+          <Link to="/" className="text-pool-under text-sm hover:underline">
             ← Scoreboard
           </Link>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-2xl font-bold text-gray-800">{team.team_name}</h1>
+          <span className="text-pool-rim">/</span>
+          <h1 className="text-2xl font-bold text-pool-primary">{team.team_name}</h1>
         </div>
         {lastUpdated && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-pool-muted">
             <span>Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             <button
               onClick={loadData}
               disabled={loading}
-              className="text-golf-green hover:text-golf-dark disabled:opacity-50 underline"
+              className="text-pool-under hover:text-green-400 disabled:opacity-50 underline"
             >
               {loading ? 'Refreshing…' : 'Refresh'}
             </button>
@@ -159,8 +159,8 @@ export default function TeamDetail() {
               to={`/team/${teamId}?t=${t.id}`}
               className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
                 String(t.id) === String(tournament.id)
-                  ? 'bg-golf-green text-white border-golf-green'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-golf-green'
+                  ? 'bg-pool-under text-black border-pool-under'
+                  : 'bg-pool-surface text-pool-muted border-pool-rim hover:border-pool-under'
               }`}
             >
               {t.name}
@@ -171,44 +171,44 @@ export default function TeamDetail() {
 
       {/* Score summary */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-center">
-          <div className="h-1 bg-golf-green" />
+        <div className="bg-pool-elevated rounded-xl border border-pool-rim overflow-hidden text-center">
+          <div className="h-1 bg-pool-under" />
           <div className="p-5">
             <div className="text-3xl font-bold mb-1">
               {team.total === null ? (
-                <span className="text-gray-300">—</span>
+                <span className="text-pool-faint">—</span>
               ) : (
                 <TeamScoreCell val={team.total} className="text-3xl" />
               )}
             </div>
-            <div className="text-xs text-gray-500">Team Score</div>
+            <div className="text-xs text-pool-muted">Team Score</div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-center">
-          <div className="h-1 bg-golf-green" />
+        <div className="bg-pool-elevated rounded-xl border border-pool-rim overflow-hidden text-center">
+          <div className="h-1 bg-pool-under" />
           <div className="p-5">
-            <div className="text-3xl font-bold text-gray-700 mb-1">
+            <div className="text-3xl font-bold text-pool-primary mb-1">
               {teamRank === 1 ? '🥇' : teamRank === 2 ? '🥈' : teamRank === 3 ? '🥉' : `#${teamRank}`}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-pool-muted">
               of {allTeams.length} teams
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-center col-span-2 sm:col-span-1">
-          <div className="h-1 bg-golf-green" />
+        <div className="bg-pool-elevated rounded-xl border border-pool-rim overflow-hidden text-center col-span-2 sm:col-span-1">
+          <div className="h-1 bg-pool-under" />
           <div className="p-5">
-            <div className="text-sm font-semibold text-gray-700 mb-1 truncate">
+            <div className="text-sm font-semibold text-pool-primary mb-1 truncate">
               {tournament.name}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-pool-muted">
               {formatTournamentDates(tournament)}
             </div>
             <div className="text-xs mt-0.5">
               <span className={`px-1.5 py-0.5 rounded-full ${
                 statusLabel(tournament.status) === 'Live'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-500'
+                  ? 'bg-pool-surface text-pool-under'
+                  : 'bg-pool-elevated text-pool-muted'
               }`}>
                 {statusLabel(tournament.status)}
               </span>
@@ -218,45 +218,45 @@ export default function TeamDetail() {
       </div>
 
       {/* Round breakdown */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="h-1 bg-golf-green" />
-        <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-          <span className="text-sm font-semibold text-gray-600">Round Breakdown</span>
+      <div className="bg-pool-elevated rounded-xl border border-pool-rim overflow-hidden">
+        <div className="h-1 bg-pool-under" />
+        <div className="px-5 py-3 bg-pool-surface border-b border-pool-rim">
+          <span className="text-sm font-semibold text-pool-muted">Round Breakdown</span>
         </div>
-        <div className="flex gap-0 divide-x divide-gray-100">
+        <div className="flex gap-0 divide-x divide-pool-rim">
           {[1, 2, 3, 4].map((r) => (
             <div key={r} className="flex-1 text-center px-2 py-3">
-              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">R{r}</div>
+              <div className="text-xs text-pool-muted uppercase tracking-wide mb-1">R{r}</div>
               <TeamScoreCell val={team.rounds?.[r]} />
             </div>
           ))}
-          <div className="flex-1 text-center px-2 py-3 bg-gray-50">
-            <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Total</div>
+          <div className="flex-1 text-center px-2 py-3 bg-pool-surface">
+            <div className="text-xs text-pool-muted uppercase tracking-wide mb-1">Total</div>
             <TeamScoreCell val={team.total} />
           </div>
         </div>
       </div>
 
       {/* Player table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
-          <span className="font-semibold text-gray-700 tracking-widest uppercase" style={{fontSize:'11px'}}>Picked Players</span>
+      <div className="bg-pool-elevated rounded-xl border border-pool-rim overflow-hidden">
+        <div className="px-5 py-3 bg-pool-surface border-b border-pool-rim flex items-center gap-2">
+          <span className="font-semibold text-pool-secondary tracking-widest uppercase" style={{fontSize:'11px'}}>Picked Players</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[460px]">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-gray-400 uppercase tracking-wider" style={{fontSize:'10px'}}>
+              <tr className="bg-pool-surface border-b border-pool-rim text-pool-muted uppercase tracking-wider" style={{fontSize:'10px'}}>
                 <th className="text-center px-2 py-2.5 font-medium">Pos</th>
                 <th className="text-left px-2 sm:px-4 py-2.5 font-medium">Player</th>
                 <th className="text-center px-2 py-2.5 font-medium">Thru</th>
-                <th className="text-center px-2 py-2.5 font-medium border-l border-gray-300">R1</th>
+                <th className="text-center px-2 py-2.5 font-medium border-l border-pool-rim">R1</th>
                 <th className="text-center px-2 py-2.5 font-medium">R2</th>
                 <th className="text-center px-2 py-2.5 font-medium">R3</th>
                 <th className="text-center px-2 py-2.5 font-medium">R4</th>
-                <th className="text-center px-2 py-2.5 font-medium border-l border-gray-300">Total</th>
+                <th className="text-center px-2 py-2.5 font-medium border-l border-pool-rim">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-pool-rim">
               {[...(team.players ?? [])].sort((a, b) => {
                 const ta = playerTotal(a.rounds);
                 const tb = playerTotal(b.rounds);
@@ -270,23 +270,23 @@ export default function TeamDetail() {
                 return (
                   <tr
                     key={player.player_espn_id}
-                    className={`transition-colors hover:bg-slate-50 ${noEligible ? 'opacity-40' : ''}`}
+                    className={`transition-colors hover:bg-pool-surface ${noEligible ? 'opacity-40' : ''}`}
                   >
-                    <td className="px-2 py-3 text-center font-mono text-gray-400 whitespace-nowrap" style={{fontSize:'11px'}}>
+                    <td className="px-2 py-3 text-center font-mono text-pool-muted whitespace-nowrap" style={{fontSize:'11px'}}>
                       {isCut
-                        ? <span className="text-gray-400">CUT</span>
+                        ? <span className="text-pool-faint">CUT</span>
                         : player.rank ?? '—'}
                     </td>
                     <td className="px-2 sm:px-4 py-3 text-sm">
                       <span className={
                         noEligible
-                          ? 'line-through text-gray-400 italic'
-                          : 'text-gray-800 font-medium'
+                          ? 'line-through text-pool-faint italic'
+                          : 'text-pool-primary font-medium'
                       }>
                         {player.player_name}
                       </span>
                     </td>
-                    <td className="px-2 py-3 text-center font-mono text-gray-400" style={{fontSize:'11px'}}>
+                    <td className="px-2 py-3 text-center font-mono text-pool-muted" style={{fontSize:'11px'}}>
                       {isCut
                         ? 'CUT'
                         : player.thru != null
@@ -294,7 +294,7 @@ export default function TeamDetail() {
                         : '—'}
                     </td>
                     {[1, 2, 3, 4].map((r) => (
-                      <td key={r} className={`px-2 py-3 text-center${r === 1 ? ' border-l border-gray-300' : ''}`}>
+                      <td key={r} className={`px-2 py-3 text-center${r === 1 ? ' border-l border-pool-rim' : ''}`}>
                         <RoundCell
                           raw={player.rounds?.[r]}
                           counting={player.counting_rounds?.includes(r)}
@@ -302,9 +302,9 @@ export default function TeamDetail() {
                         />
                       </td>
                     ))}
-                    <td className="px-2 py-3 text-center border-l border-gray-300">
+                    <td className="px-2 py-3 text-center border-l border-pool-rim">
                       {noEligible ? (
-                        <span className="text-gray-300 text-sm">—</span>
+                        <span className="text-pool-faint text-sm">—</span>
                       ) : (
                         <TeamScoreCell val={playerTotal(player.rounds)} className="text-base" />
                       )}
