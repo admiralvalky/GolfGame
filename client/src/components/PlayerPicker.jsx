@@ -34,7 +34,7 @@ export default function PlayerPicker({ players = [], selected = [], onToggle, ma
         </span>
       </div>
 
-      <div className="overflow-y-auto max-h-[50vh] sm:max-h-96 border border-pool-rim rounded-lg divide-y divide-gray-100 bg-pool-surface">
+      <div className="overflow-y-auto max-h-[50vh] sm:max-h-96 border border-pool-rim rounded-lg divide-y divide-pool-rim bg-pool-surface">
         {filtered.length === 0 && (
           <p className="text-center text-pool-faint py-6 text-sm">No players found</p>
         )}
@@ -79,7 +79,7 @@ export default function PlayerPicker({ players = [], selected = [], onToggle, ma
                   isCut
                     ? 'text-pool-faint'
                     : String(player.score).startsWith('-')
-                    ? 'text-red-600 font-semibold'
+                    ? 'text-pool-over font-semibold'
                     : player.score === 'E' || player.score === '0'
                     ? 'text-pool-secondary'
                     : 'text-pool-gold'
