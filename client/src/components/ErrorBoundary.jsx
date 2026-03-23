@@ -17,16 +17,23 @@ export default class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '2rem', maxWidth: '600px', margin: '2rem auto' }}>
-          <h2 style={{ color: '#dc2626', marginBottom: '1rem' }}>Something went wrong</h2>
+        <div style={{
+          padding: '2rem',
+          maxWidth: '600px',
+          margin: '2rem auto',
+          background: '#2d1515',
+          border: '1px solid #7f1d1d',
+          borderRadius: '12px',
+        }}>
+          <h2 style={{ color: '#fca5a5', marginBottom: '1rem' }}>Something went wrong</h2>
           <pre style={{
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
+            background: '#0d1f15',
+            border: '1px solid #2d5a3d',
             borderRadius: '8px',
             padding: '1rem',
             whiteSpace: 'pre-wrap',
             fontSize: '0.875rem',
-            color: '#991b1b',
+            color: '#86efac',
           }}>
             {this.state.error?.message ?? 'Unknown error'}
           </pre>
@@ -35,9 +42,9 @@ export default class ErrorBoundary extends Component {
             style={{
               marginTop: '1rem',
               padding: '0.5rem 1rem',
-              background: '#2d6a4f',
-              color: 'white',
-              border: 'none',
+              background: '#1a3a2a',
+              color: '#f0fdf4',
+              border: '1px solid #2d5a3d',
               borderRadius: '6px',
               cursor: 'pointer',
             }}

@@ -20,19 +20,19 @@ export default function LastUpdated({ timestamp, onRefresh, loading }) {
   }
 
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-500">
+    <div className="flex items-center gap-2 text-xs text-pool-muted">
       <span>Updated {formatted}</span>
       <button
         onClick={handleRefresh}
         disabled={loading || cooldownActive}
-        className="text-golf-green hover:text-golf-dark disabled:opacity-50 underline"
+        className="text-pool-secondary hover:text-pool-primary disabled:opacity-40 underline"
       >
         {loading ? 'Refreshing…' : 'Refresh'}
       </button>
       {showToast ? (
-        <span className="text-golf-green font-medium">Scores refreshed</span>
+        <span className="text-pool-under font-medium">Scores refreshed</span>
       ) : (
-        <span className="text-gray-300">(auto every 10 min)</span>
+        <span className="text-pool-faint">(auto every 10 min)</span>
       )}
     </div>
   );
