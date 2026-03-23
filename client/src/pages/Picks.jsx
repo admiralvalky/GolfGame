@@ -1,10 +1,22 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getTeams, getTournaments, getEspnPlayers, getPicks, savePicks } from '../api.js';
 import PlayerPicker from '../components/PlayerPicker.jsx';
 
 export default function Picks() {
   const { tournamentId } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!tournamentId) {
+      getTournaments().then((data) => {
+        const active = data.tournaments.find((t) => t.status === 'in') ?? data.tournaments[0];
+        if (active) navigate(`/picks/${active.id}`, { replace: true });
+      });
+    }
+  }, [tournamentId, navigate]);
+
+  if (!tournamentId) return null;
 
   const [tournament, setTournament] = useState(null);
   const [teams, setTeams] = useState([]);
@@ -105,14 +117,14 @@ export default function Picks() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-48 text-gray-400">Loading…</div>;
+    return <div className="flex items-center justify-center h-48 text-pool-muted">Loading…</div>;
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-        <p className="text-red-600 mb-3">{error}</p>
-        <Link to="/setup" className="text-golf-green underline text-sm">
+      <div className="bg-pool-err-bg border border-red-900 rounded-xl p-6 text-center">
+        <p className="text-pool-err-fg mb-3">{error}</p>
+        <Link to="/setup" className="text-pool-under underline text-sm">
           Go to Setup →
         </Link>
       </div>
@@ -122,8 +134,8 @@ export default function Picks() {
   if (teams.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 mb-3">No teams created yet.</p>
-        <Link to="/setup" className="text-golf-green underline">Create teams in Setup →</Link>
+        <p className="text-pool-faint mb-3">No teams created yet.</p>
+        <Link to="/setup" className="text-pool-under underline">Create teams in Setup →</Link>
       </div>
     );
   }
@@ -132,12 +144,9 @@ export default function Picks() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Pick Players</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{tournament?.name}</p>
+          <h1 className="text-2xl font-bold text-pool-primary">Pick Players</h1>
+          <p className="text-sm text-pool-muted mt-0.5">{tournament?.name}</p>
         </div>
-        <Link to="/scoreboard" className="text-sm text-golf-green underline">
-          View Scoreboard →
-        </Link>
       </div>
 
       {/* Team selector */}
@@ -150,8 +159,8 @@ export default function Picks() {
               onClick={() => handleSelectTeam(team.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
                 activeTeamId === team.id
-                  ? 'bg-golf-green text-white border-golf-green'
-                  : 'bg-white text-gray-700 border-gray-200 hover:border-golf-green'
+                  ? 'bg-pool-under text-black border-pool-under'
+                  : 'bg-pool-surface text-pool-secondary border-pool-rim hover:border-pool-under'
               }`}
             >
               {team.name}
@@ -165,9 +174,9 @@ export default function Picks() {
 
       {/* Player picker */}
       {activeTeamId && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+        <div className="bg-pool-elevated rounded-xl border border-pool-rim p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-700">
+            <h2 className="font-semibold text-pool-primary">
               {teams.find((t) => t.id === activeTeamId)?.name} — Pick 6 Players
             </h2>
           </div>
@@ -180,13 +189,13 @@ export default function Picks() {
 
           {/* Selected summary */}
           {selectedPlayers.length > 0 && (
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs font-medium text-gray-500 mb-2">Selected Players:</p>
+            <div className="bg-pool-surface rounded-lg p-3">
+              <p className="text-xs font-medium text-pool-muted mb-2">Selected Players:</p>
               <div className="flex flex-wrap gap-1.5">
                 {selectedPlayers.map((p) => (
                   <span
                     key={p.player_espn_id}
-                    className="bg-golf-green/10 text-golf-dark text-xs px-2 py-1 rounded-full"
+                    className="bg-pool-surface text-pool-secondary text-xs px-2 py-1 rounded-full"
                   >
                     {p.player_name}
                   </span>
@@ -199,14 +208,14 @@ export default function Picks() {
             <button
               onClick={handleSave}
               disabled={saving || selectedPlayers.length !== 6}
-              className="bg-golf-green text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-golf-dark disabled:opacity-50 transition-colors"
+              className="bg-pool-under text-black px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-400 disabled:opacity-50 transition-colors"
             >
               {saving ? 'Saving…' : 'Save Picks'}
             </button>
             {saveMsg && (
               <span
                 className={`text-sm ${
-                  saveMsg === 'Picks saved!' ? 'text-golf-green' : 'text-red-500'
+                  saveMsg === 'Picks saved!' ? 'text-pool-under' : 'text-pool-over'
                 }`}
               >
                 {saveMsg}
