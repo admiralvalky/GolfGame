@@ -101,11 +101,11 @@ export default function Setup() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-gray-800">Setup</h1>
+      <h1 className="text-2xl font-bold text-pool-primary">Setup</h1>
 
       {/* Teams Section */}
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-700">Teams</h2>
+      <section className="bg-pool-elevated rounded-xl border border-pool-rim p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-pool-primary">Teams</h2>
 
         <form onSubmit={handleCreateTeam} className="flex gap-2">
           <input
@@ -113,25 +113,25 @@ export default function Setup() {
             placeholder="Team name…"
             value={newTeamName}
             onChange={(e) => setNewTeamName(e.target.value)}
-            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-golf-green"
+            className="flex-1 bg-pool-surface border border-pool-rim text-pool-primary placeholder:text-pool-faint rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under"
           />
           <button
             type="submit"
             disabled={teamLoading || !newTeamName.trim()}
-            className="bg-golf-green text-white px-4 py-2 rounded text-sm font-medium hover:bg-golf-dark disabled:opacity-50 transition-colors"
+            className="bg-pool-under text-black px-4 py-2 rounded text-sm font-medium hover:bg-green-400 disabled:opacity-50 transition-colors"
           >
             Add Team
           </button>
         </form>
-        {teamError && <p className="text-red-500 text-sm">{teamError}</p>}
+        {teamError && <p className="text-pool-over text-sm">{teamError}</p>}
 
         {teams.length === 0 ? (
-          <p className="text-sm text-gray-400">No teams yet. Create one above.</p>
+          <p className="text-sm text-pool-faint">No teams yet. Create one above.</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-pool-rim">
             {teams.map((team) => (
               <li key={team.id} className="flex items-center justify-between py-2.5">
-                <span className="font-medium text-sm text-gray-800">{team.name}</span>
+                <span className="font-medium text-sm text-pool-primary">{team.name}</span>
                 <button
                   onClick={() => handleDeleteTeam(team.id)}
                   className="text-red-400 hover:text-red-600 text-xs"
@@ -145,20 +145,20 @@ export default function Setup() {
       </section>
 
       {/* Tournaments Section */}
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-700">Tournaments</h2>
+      <section className="bg-pool-elevated rounded-xl border border-pool-rim p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-pool-primary">Tournaments</h2>
 
         {/* Year + Tournament pickers */}
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500 font-medium">Year</label>
+            <label className="text-xs text-pool-muted font-medium">Year</label>
             <select
               value={selectedYear}
               onChange={e => {
                 setSelectedYear(Number(e.target.value));
                 setSelectedTournamentId('');
               }}
-              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-golf-green"
+              className="bg-pool-surface border border-pool-rim text-pool-primary rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under disabled:opacity-50"
             >
               {YEARS.map(y => (
                 <option key={y} value={y}>{y}</option>
@@ -167,12 +167,12 @@ export default function Setup() {
           </div>
 
           <div className="flex flex-col gap-1 flex-1 min-w-48">
-            <label className="text-xs text-gray-500 font-medium">Tournament</label>
+            <label className="text-xs text-pool-muted font-medium">Tournament</label>
             <select
               value={selectedTournamentId}
               onChange={e => setSelectedTournamentId(e.target.value)}
               disabled={scheduleLoading || schedule.length === 0}
-              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-golf-green disabled:opacity-50"
+              className="bg-pool-surface border border-pool-rim text-pool-primary rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under disabled:opacity-50"
             >
               <option value="">
                 {scheduleLoading ? 'Loading…' : schedule.length === 0 ? 'No tournaments found' : 'Select a tournament…'}
@@ -187,11 +187,11 @@ export default function Setup() {
 
           {selectedTournament && (
             savedIds.has(selectedTournament.id) ? (
-              <span className="text-sm text-golf-green font-medium pb-2">✓ Already saved</span>
+              <span className="text-sm text-pool-under font-medium pb-2">✓ Already saved</span>
             ) : (
               <button
                 onClick={handleSaveTournament}
-                className="bg-golf-green text-white px-4 py-2 rounded text-sm font-medium hover:bg-golf-dark transition-colors"
+                className="bg-pool-under text-black px-4 py-2 rounded text-sm font-medium hover:bg-green-400 transition-colors"
               >
                 Add
               </button>
@@ -200,25 +200,25 @@ export default function Setup() {
         </div>
 
         {scheduleError && (
-          <p className="text-sm text-red-500 bg-red-50 rounded p-3">{scheduleError}</p>
+          <p className="text-sm text-pool-over bg-pool-err-bg rounded p-3">{scheduleError}</p>
         )}
 
         {/* Saved Tournaments */}
         {savedTournaments.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Saved Tournaments</h3>
-            <ul className="divide-y divide-gray-100">
+            <h3 className="text-sm font-medium text-pool-muted mb-2">Saved Tournaments</h3>
+            <ul className="divide-y divide-pool-rim">
               {savedTournaments.map((t) => (
                 <li key={t.id} className="flex items-center justify-between py-2.5">
-                  <span className="text-sm text-gray-800">{t.name}</span>
+                  <span className="text-sm text-pool-primary">{t.name}</span>
                   <div className="flex items-center gap-3">
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${
                         t.status === 'in'
-                          ? 'bg-green-100 text-green-700'
+                          ? 'bg-pool-surface text-pool-under'
                           : t.status === 'post'
-                          ? 'bg-gray-100 text-gray-500'
-                          : 'bg-yellow-100 text-yellow-700'
+                          ? 'bg-pool-elevated text-pool-muted'
+                          : 'bg-pool-elevated text-pool-gold'
                       }`}
                     >
                       {t.status}
@@ -226,7 +226,7 @@ export default function Setup() {
                     {teams.length > 0 && (
                       <Link
                         to={`/picks/${t.id}`}
-                        className="text-xs text-golf-green underline hover:text-golf-dark"
+                        className="text-xs text-pool-under underline hover:text-green-400"
                       >
                         Pick Players →
                       </Link>
