@@ -42,7 +42,7 @@ export default async function handler(req, res) {
 
     let playerScores;
     try {
-      playerScores = await fetchPlayerScores(supabase, tournament.espn_tournament_id, tournament.status);
+      ({ scoreMap: playerScores } = await fetchPlayerScores(supabase, tournament.espn_tournament_id, tournament.status));
     } catch (err) {
       console.error(`Failed scores for tournament ${tournament.id}:`, err.message);
       tournamentResults.push({ tournament, scores: {} });
