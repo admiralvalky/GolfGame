@@ -1,47 +1,21 @@
-import { Link, useLocation } from 'react-router-dom';
-
-const navLinks = [
-  { to: '/', label: 'Home' },
-  { to: '/scoreboard', label: 'Scoreboard' },
-  { to: '/season', label: 'Season' },
-  { to: '/setup', label: 'Setup' },
-];
+import BottomNav from './BottomNav.jsx';
 
 export default function Layout({ children }) {
-  const { pathname } = useLocation();
-
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="bg-golf-dark text-white shadow-lg border-b-2 border-golf-fairway">
-        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between">
-          <Link to="/" className="text-base sm:text-xl font-extrabold tracking-wide flex items-center gap-1.5">
-            ⛳ Golf Pool
-          </Link>
-          <nav className="flex gap-0.5 sm:gap-1">
-            {navLinks.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                className={`px-2 sm:px-3 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors ${
-                  pathname === to
-                    ? 'bg-white/20 text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
+    <div className="min-h-screen flex flex-col bg-pool-base">
+      {/* Slim top bar */}
+      <header className="fixed top-0 left-0 right-0 bg-pool-elevated border-b border-pool-rim z-40">
+        <div className="max-w-2xl mx-auto px-4 h-12 flex items-center">
+          <span className="text-sm font-bold tracking-wide text-pool-primary">⛳ GOLF POOL</span>
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">{children}</main>
+      {/* Scrollable content — padded for fixed header (48px) and fixed bottom nav (~64px) */}
+      <main className="flex-1 max-w-2xl w-full mx-auto px-3 pt-16 pb-24">
+        {children}
+      </main>
 
-      <footer className="text-center text-xs text-gray-400 py-4 border-t border-gray-200">
-        Golf Pool · Data via ESPN
-      </footer>
+      <BottomNav />
     </div>
   );
 }
