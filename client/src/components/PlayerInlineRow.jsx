@@ -1,10 +1,32 @@
-function scoreColor(val) {
-  if (val === "E" || val === 0) return "text-pool-even";
-  if (typeof val === "number") {
-    if (val < 0) return "text-pool-under";
-    if (val > 0) return "text-pool-over";
-  }
-  return "text-pool-faint";
+function parseScore(val) {
+  if (val === null || val === undefined || val === '') return null;
+  const s = String(val).trim().toUpperCase();
+  if (s === 'E') return 0;
+  const n = parseInt(s, 10);
+  return isNaN(n) ? null : n;
+}
+
+function nonCountingColor(val) {
+  const n = parseScore(val);
+  if (n === null) return 'text-pool-faint';
+  if (n > 0) return 'text-pool-over'; // red for over-par
+  if (n < 0) return 'text-pool-secondary'; // subtle for under-par
+  return 'text-pool-even'; // gray for even
+}
+
+function totalColor(val) {
+  if (val === null || val === undefined) return 'text-pool-faint';
+  if (val === 0) return 'text-pool-even';
+  if (val < 0) return 'text-pool-under';
+  if (val > 0) return 'text-pool-over';
+  return 'text-pool-faint';
+}
+
+function formatTotal(val) {
+  if (val === null || val === undefined) return '—';
+  if (val === 0) return 'E';
+  if (val > 0) return `+${val}`;
+  return String(val);
 }
 
 export default function PlayerInlineRow({
@@ -18,56 +40,45 @@ export default function PlayerInlineRow({
 }) {
   return (
     <div
-      className={`bg-pool-elevated px-4 py-2 flex items-center gap-2${isCut ? " opacity-40" : ""}`}
+      className={`bg-pool-elevated px-3 py-2${isCut ? ' opacity-40' : ''}`}
+      style={{ display: 'grid', gridTemplateColumns: '2rem 1fr 2.25rem 2.25rem 2.25rem 2.25rem 2.25rem 2.75rem', alignItems: 'center', gap: '0' }}
     >
       {/* Position */}
-      <span className="text-xs text-pool-muted w-8 flex-shrink-0">{pos}</span>
+      <span className="text-xs text-pool-muted">{pos}</span>
 
       {/* Player name */}
-      <span
-        className={`text-sm font-medium flex-1${
-          isCut
-            ? " line-through text-pool-muted"
-            : " text-pool-primary"
-        }`}
-      >
+      <span className={`text-sm font-medium min-w-0 truncate pr-2${isCut ? ' line-through text-pool-muted' : ' text-pool-primary'}`}>
         {name}
       </span>
 
       {/* Thru */}
-      <span className="text-xs text-pool-muted w-8 text-center flex-shrink-0">
-        {thru ?? "—"}
-      </span>
+      <span className="text-xs text-pool-muted text-center">{thru ?? '—'}</span>
 
-      {/* Round score badges */}
+      {/* Round scores */}
       {rounds.map((score, i) => {
-        if (score === null || score === undefined) {
+        const isCounting = countingRounds[i] === true;
+        const hasScore = score !== null && score !== undefined && String(score).trim() !== '';
+
+        if (isCounting && hasScore) {
           return (
-            <span key={i} className="text-xs text-pool-faint w-8 text-center flex-shrink-0">
-              —
+            <span key={i} className="flex items-center justify-center">
+              <span className="text-xs font-mono font-bold bg-pool-counting text-pool-counting-fg rounded px-1 py-0.5 leading-none">
+                {score}
+              </span>
             </span>
           );
         }
-        const isCounting = countingRounds[i] === true;
+
         return (
-          <span
-            key={i}
-            className={`text-xs px-1.5 py-0.5 rounded font-mono flex-shrink-0${
-              isCounting
-                ? " bg-pool-counting text-pool-counting-fg font-bold"
-                : " bg-pool-surface text-pool-secondary"
-            }`}
-          >
-            {score}
+          <span key={i} className={`text-xs font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}`}>
+            {hasScore ? score : '—'}
           </span>
         );
       })}
 
       {/* Total */}
-      <span
-        className={`font-mono font-bold text-sm flex-shrink-0 ml-1 ${scoreColor(total)}`}
-      >
-        {total ?? "—"}
+      <span className={`text-sm font-mono font-bold text-right ${totalColor(total)}`}>
+        {formatTotal(total)}
       </span>
     </div>
   );

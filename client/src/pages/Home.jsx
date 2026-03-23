@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getTournaments, getScoreboard } from '../api.js';
 import { useAutoRefresh } from '../hooks/useAutoRefresh.js';
@@ -47,6 +47,20 @@ export default function Home() {
   const [tournaments, setTournaments] = useState(null); // null = loading
   const [selectedId, setSelectedId] = useState(null);
   const [expandedTeams, setExpandedTeams] = useState(new Set());
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [dropdownOpen]);
 
   useEffect(() => {
     getTournaments().then(({ tournaments: list }) => {
@@ -99,25 +113,72 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-4 p-4">
-      {/* Tournament selector */}
-      <select
-        value={selectedId ?? ''}
-        onChange={(e) => setSelectedId(e.target.value)}
-        className="bg-pool-elevated border border-pool-rim text-pool-primary rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-pool-under"
-      >
-        {tournaments.map(t => (
-          <option key={t.id} value={t.id}>{t.name}</option>
-        ))}
-      </select>
+    <div className="space-y-3 p-4">
 
-      {/* Tournament info bar */}
-      {data?.tournament && (
-        <div>
-          <h1 className="text-xl font-bold text-pool-primary">{data.tournament.name}</h1>
+      {/* Tournament title — acts as the dropdown selector */}
+      <div className="relative" ref={dropdownRef}>
+        <button
+          type="button"
+          onClick={() => setDropdownOpen(p => !p)}
+          className="flex items-start gap-1.5 group text-left"
+          aria-haspopup="listbox"
+          aria-expanded={dropdownOpen}
+        >
+          <h1 className="text-2xl font-bold text-pool-primary group-hover:text-pool-secondary transition-colors leading-tight">
+            {selectedTournament?.name ?? '—'}
+          </h1>
+          {tournaments.length > 1 && (
+            <svg
+              className="w-4 h-4 mt-1.5 text-pool-faint group-hover:text-pool-muted transition-colors shrink-0"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+            </svg>
+          )}
+        </button>
+
+        {/* Dropdown list */}
+        {dropdownOpen && tournaments.length > 1 && (
+          <div
+            role="listbox"
+            className="absolute top-full left-0 z-50 mt-1.5 bg-pool-elevated border border-pool-rim rounded-xl shadow-2xl overflow-hidden min-w-[14rem]"
+          >
+            {tournaments.map(t => (
+              <button
+                key={t.id}
+                role="option"
+                aria-selected={t.id === selectedId}
+                type="button"
+                onClick={() => { setSelectedId(t.id); setDropdownOpen(false); }}
+                className={`w-full text-left px-4 py-3 text-sm transition-colors hover:bg-pool-surface border-l-2 ${
+                  t.id === selectedId
+                    ? 'text-pool-under font-semibold border-pool-under'
+                    : 'text-pool-secondary border-transparent'
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tournament meta: status, dates, course */}
+      {selectedTournament && (
+        <div className="space-y-0.5">
           <p className="text-xs text-pool-muted uppercase tracking-widest">
-            {statusLabel(data.tournament.status)} · {formatTournamentDates(data.tournament)}
+            {statusLabel(data?.tournament?.status ?? selectedTournament.status)}
+            {' · '}
+            {formatTournamentDates(selectedTournament)}
           </p>
+          {data?.tournament?.course && (
+            <p className="text-xs text-pool-faint">
+              {data.tournament.course}
+              {data.tournament.par ? ` · Par ${data.tournament.par}` : ''}
+            </p>
+          )}
         </div>
       )}
 

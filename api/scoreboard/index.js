@@ -37,8 +37,11 @@ export default async function handler(req, res) {
   }
 
   let playerScores;
+  let venue = { course: null, par: null };
   try {
-    playerScores = await fetchPlayerScores(supabase, tournament.espn_tournament_id, tournament.status);
+    const result = await fetchPlayerScores(supabase, tournament.espn_tournament_id, tournament.status);
+    playerScores = result.scoreMap;
+    venue = result.venue ?? { course: null, par: null };
   } catch (err) {
     console.error('Failed to fetch ESPN scores:', err.message);
     return res.status(502).json({ error: 'Failed to fetch live scores from ESPN' });
@@ -72,5 +75,9 @@ export default async function handler(req, res) {
     results[i].rank = rank;
   }
 
-  res.json({ tournament, teams: results, lastUpdated: new Date().toISOString() });
+  res.json({
+    tournament: { ...tournament, course: venue.course, par: venue.par },
+    teams: results,
+    lastUpdated: new Date().toISOString(),
+  });
 }

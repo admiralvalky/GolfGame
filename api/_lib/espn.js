@@ -92,11 +92,17 @@ export async function fetchRoundsFromCoreApi(espnTournamentId, playerIds) {
 export async function fetchPlayerScores(supabase, espnTournamentId, status = '') {
   const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${espnTournamentId}`;
   let competitors = [];
+  let venue = { course: null, par: null };
   try {
     const res = await fetch(url, { headers: { 'User-Agent': UA } });
     if (res.ok) {
       const json = await res.json();
       competitors = json.events?.[0]?.competitions?.[0]?.competitors ?? [];
+      const comp = json.events?.[0]?.competitions?.[0];
+      venue = {
+        course: comp?.venue?.fullName ?? null,
+        par: comp?.course?.par ?? comp?.situation?.par ?? null,
+      };
     }
   } catch (err) {
     console.error(`ESPN fetch failed for ${espnTournamentId}:`, err.message);
@@ -121,7 +127,7 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
           rank: row.rank ?? null,
         });
       }
-      return scoreMap;
+      return { scoreMap, venue };
     }
     throw new Error(`No score data available for ESPN tournament ${espnTournamentId}`);
   }
@@ -220,5 +226,5 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     console.error('Failed to cache scores to DB:', err.message);
   }
 
-  return scoreMap;
+  return { scoreMap, venue };
 }

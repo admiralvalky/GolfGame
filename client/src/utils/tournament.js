@@ -1,18 +1,18 @@
 export function formatTournamentDates(t) {
   if (!t?.start_date) return '';
   const start = new Date(t.start_date);
+  const year = start.getFullYear();
   const opts = { month: 'short', day: 'numeric' };
   if (t.end_date) {
     const end = new Date(t.end_date);
     const sameMonth = start.getMonth() === end.getMonth();
     return sameMonth
-      ? `${start.toLocaleDateString('en-US', opts)}–${end.getDate()}`
-      : `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`;
+      ? `${start.toLocaleDateString('en-US', opts)}–${end.getDate()}, ${year}`
+      : `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}, ${year}`;
   }
-  // Fallback: assume 4-day event
   const end = new Date(start);
   end.setDate(end.getDate() + 3);
-  return `${start.toLocaleDateString('en-US', opts)}–${end.getDate()}`;
+  return `${start.toLocaleDateString('en-US', opts)}–${end.getDate()}, ${year}`;
 }
 
 export function statusLabel(status) {
