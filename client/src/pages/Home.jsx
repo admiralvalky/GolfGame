@@ -1,219 +1,214 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { getTournaments, getTeams, getSeasonStandings, getEspnTournamentDetails } from '../api.js';
-import { formatTournamentDates } from '../utils/tournament.js';
+import { getTournaments, getScoreboard } from '../api.js';
+import { useAutoRefresh } from '../hooks/useAutoRefresh.js';
+import { formatTournamentDates, statusLabel } from '../utils/tournament.js';
+import HybridTeamRow from '../components/HybridTeamRow.jsx';
+import PlayerInlineRow from '../components/PlayerInlineRow.jsx';
+import LastUpdated from '../components/LastUpdated.jsx';
 
-function StatusBadge({ status }) {
-  const cfg = status === 'in'
-    ? 'bg-green-400/30 text-green-100'
-    : status === 'post'
-    ? 'bg-white/20 text-white/70'
-    : 'bg-yellow-400/30 text-yellow-100';
-  const label = status === 'in' ? 'Live' : status === 'post' ? 'Completed' : 'Upcoming';
-  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg}`}>{label}</span>;
+function shouldAutoRefresh(tournament) {
+  if (!tournament) return false;
+  const now = new Date();
+  const windowStart = new Date(tournament.start_date);
+  windowStart.setDate(windowStart.getDate() - 1);
+  const endBase = tournament.end_date
+    ? new Date(tournament.end_date)
+    : (() => { const d = new Date(tournament.start_date); d.setDate(d.getDate() + 3); return d; })();
+  const windowEnd = new Date(endBase);
+  windowEnd.setDate(windowEnd.getDate() + 1);
+  return now >= windowStart && now <= windowEnd;
 }
 
-function tournamentStatusLabel(status) {
-  if (status === 'in') return 'Live';
-  if (status === 'post') return 'Completed';
-  return 'Upcoming';
-}
-
-function getTournamentWinner(seasonTeams, tournamentId) {
-  let winner = null;
-  let best = Infinity;
-  for (const team of seasonTeams) {
-    const score = team.byTournament?.[tournamentId];
-    if (score != null && score < best) {
-      best = score;
-      winner = team.team_name;
-    }
+function playerTotal(rounds) {
+  let sum = null;
+  for (let r = 1; r <= 4; r++) {
+    const raw = rounds?.[r];
+    if (raw == null) continue;
+    const s = String(raw).trim().toUpperCase();
+    const n = s === 'E' ? 0 : parseInt(s, 10);
+    if (!isNaN(n)) { if (sum === null) sum = 0; sum += n; }
   }
-  return winner;
+  return sum;
+}
+
+function sortPlayers(players) {
+  return [...players].sort((a, b) => {
+    const ta = playerTotal(a.rounds);
+    const tb = playerTotal(b.rounds);
+    if (ta === null && tb === null) return 0;
+    if (ta === null) return 1;
+    if (tb === null) return -1;
+    return ta - tb;
+  });
 }
 
 export default function Home() {
-  const [tournaments, setTournaments] = useState([]);
-  const [teams, setTeams] = useState([]);
-  const [seasonTeams, setSeasonTeams] = useState([]);
-  const [heroDetails, setHeroDetails] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [tournaments, setTournaments] = useState(null); // null = loading
+  const [selectedId, setSelectedId] = useState(null);
+  const [expandedTeams, setExpandedTeams] = useState(new Set());
 
   useEffect(() => {
-    Promise.all([getTournaments(), getTeams(), getSeasonStandings()])
-      .then(([t, tm, s]) => {
-        setTournaments(t.tournaments);
-        setTeams(tm.teams);
-        setSeasonTeams(s.teams ?? []);
-        const hero = t.tournaments[0] ?? null;
-        if (hero?.espn_tournament_id) {
-          getEspnTournamentDetails(hero.espn_tournament_id)
-            .then(setHeroDetails)
-            .catch(() => {});
-        }
-      })
-      .finally(() => setLoading(false));
+    getTournaments().then(({ tournaments: list }) => {
+      setTournaments(list);
+      const active = list.find(t => t.status === 'in');
+      setSelectedId((active ?? list[0])?.id ?? null);
+    });
   }, []);
 
-  const activeTournament = tournaments[0] ?? null;
-  const heroTournament = tournaments[0] ?? null;
+  const selectedTournament = tournaments?.find(t => t.id === selectedId) ?? null;
+  const autoRefresh = shouldAutoRefresh(selectedTournament);
+  const intervalMs = autoRefresh ? 10 * 60 * 1000 : null;
 
-  if (loading) {
+  const fetchFn = useCallback(() => {
+    if (!selectedId) return Promise.resolve(null);
+    return getScoreboard(selectedId);
+  }, [selectedId]);
+
+  const { data, loading, error, lastUpdated, refresh } = useAutoRefresh(fetchFn, intervalMs);
+
+  function toggleTeam(teamId) {
+    setExpandedTeams(prev => {
+      const next = new Set(prev);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      return next;
+    });
+  }
+
+  // Tournaments still loading
+  if (tournaments === null) {
     return (
-      <div className="flex items-center justify-center h-48 text-gray-400">
-        Loading…
+      <div className="space-y-2 p-4">
+        <div className="bg-pool-surface animate-pulse rounded h-10 mb-4" />
+        <div className="bg-pool-surface animate-pulse rounded h-16 mb-2" />
+        <div className="bg-pool-surface animate-pulse rounded h-16 mb-2" />
+        <div className="bg-pool-surface animate-pulse rounded h-16 mb-2" />
+      </div>
+    );
+  }
+
+  // No tournaments
+  if (tournaments.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-pool-faint text-sm">No tournaments set up yet.</p>
+        <Link to="/setup" className="text-pool-under text-sm underline mt-2 block">Go to Setup →</Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Hero */}
-      {(() => {
-        const heroContent = (
-          <div className="relative bg-gradient-to-br from-golf-dark via-golf-green to-golf-fairway rounded-2xl p-5 sm:p-8 text-white text-center shadow-lg overflow-hidden">
-            <span className="absolute inset-0 flex items-center justify-center text-[8rem] opacity-5 pointer-events-none select-none">⛳</span>
-            {heroTournament ? (
-              <>
-                <div className="relative flex items-center justify-center gap-2 mb-2">
-                  <StatusBadge status={heroTournament.status} />
-                </div>
-                <h1 className="relative text-xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3">{heroTournament.name}</h1>
-                {heroDetails && (
-                  <div className="relative flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mb-2 sm:mb-3 text-white/80 text-xs sm:text-sm">
-                    {heroDetails.courseName && (
-                      <span>📍 {heroDetails.courseName}{heroDetails.city ? `, ${heroDetails.city}` : ''}{heroDetails.state ? `, ${heroDetails.state}` : ''}</span>
-                    )}
-                    {heroDetails.par && (
-                      <span>Par {heroDetails.par}</span>
-                    )}
-                    {heroDetails.purse && (
-                      <span>💰 {heroDetails.purse}</span>
-                    )}
-                    <span>📅 {formatTournamentDates(heroTournament)}</span>
-                  </div>
-                )}
-                <p className="relative text-golf-light font-medium text-sm">View Scoreboard →</p>
-              </>
-            ) : (
-              <>
-                <h1 className="relative text-2xl sm:text-3xl md:text-4xl font-bold mb-2">⛳ Golf Pool</h1>
-                <p className="relative text-golf-light font-semibold text-sm tracking-widest uppercase">
-                  Pick 6 · Best 2 count · Lowest wins
-                </p>
-              </>
-            )}
-          </div>
-        );
-        return heroTournament
-          ? <Link to="/scoreboard" className="block">{heroContent}</Link>
-          : heroContent;
-      })()}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          {
-            to: activeTournament ? `/scoreboard` : '/setup',
-            icon: '📊',
-            label: 'Scoreboard',
-            desc: 'Live standings',
-          },
-          { to: '/season', icon: '🏆', label: 'Season', desc: 'All-time standings' },
-          {
-            to: activeTournament ? `/picks/${activeTournament.id}` : '/setup',
-            icon: '🏌️',
-            label: 'Pick Players',
-            desc: activeTournament ? activeTournament.name : 'No active tournament',
-          },
-          { to: '/setup', icon: '⚙️', label: 'Setup', desc: 'Teams & tournaments' },
-        ].map(({ to, icon, label, desc }) => (
-          <Link
-            key={label}
-            to={to}
-            className="group bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-golf-light hover:-translate-y-0.5 transition-all text-center"
-          >
-            <div className="bg-golf-green/10 rounded-xl w-10 h-10 flex items-center justify-center mx-auto mb-2 text-2xl">
-              {icon}
-            </div>
-            <div className="font-semibold text-sm text-gray-800">{label}</div>
-            <div className="text-xs text-gray-400 mt-0.5 truncate">{desc}</div>
-          </Link>
+    <div className="space-y-4 p-4">
+      {/* Tournament selector */}
+      <select
+        value={selectedId ?? ''}
+        onChange={(e) => setSelectedId(e.target.value)}
+        className="bg-pool-elevated border border-pool-rim text-pool-primary rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-pool-under"
+      >
+        {tournaments.map(t => (
+          <option key={t.id} value={t.id}>{t.name}</option>
         ))}
-      </div>
+      </select>
 
-      {/* Current State */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-golf-green p-5">
-          <h2 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            🏆 Tournaments Played
-            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-              {tournaments.length}
-            </span>
-          </h2>
-          {tournaments.length === 0 ? (
-            <p className="text-sm text-gray-400">
-              No tournaments saved yet.{' '}
-              <Link to="/setup" className="text-golf-green underline">
-                Add one in Setup
-              </Link>
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {tournaments.slice(0, 5).map((t) => {
-                const winner = getTournamentWinner(seasonTeams, t.id);
-                return (
-                  <li key={t.id} className="flex items-start justify-between text-sm py-1">
-                    <div>
-                      <span className="text-gray-700">{t.name}</span>
-                      {winner && t.status === 'post' && (
-                        <div className="text-xs text-gray-400 mt-0.5">🏆 {winner}</div>
-                      )}
-                    </div>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ml-2 whitespace-nowrap ${
-                        t.status === 'in'
-                          ? 'bg-green-100 text-green-700'
-                          : t.status === 'post'
-                          ? 'bg-gray-100 text-gray-500'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                    >
-                      {tournamentStatusLabel(t.status)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+      {/* Tournament info bar */}
+      {data?.tournament && (
+        <div>
+          <h1 className="text-xl font-bold text-pool-primary">{data.tournament.name}</h1>
+          <p className="text-xs text-pool-muted uppercase tracking-widest">
+            {statusLabel(data.tournament.status)} · {formatTournamentDates(data.tournament)}
+          </p>
         </div>
+      )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-golf-green p-5">
-          <h2 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            ⛳ Teams
-            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-              {teams.length}
-            </span>
-          </h2>
-          {teams.length === 0 ? (
-            <p className="text-sm text-gray-400">
-              No teams yet.{' '}
-              <Link to="/setup" className="text-golf-green underline">
-                Create one in Setup
-              </Link>
-            </p>
-          ) : (
-            <ul className="space-y-1.5">
-              {teams.map((t) => (
-                <li key={t.id} className="text-sm text-gray-700 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-golf-green" />
-                  {t.name}
-                </li>
-              ))}
-            </ul>
-          )}
+      {/* Scoreboard loading state */}
+      {loading && (
+        <div className="space-y-2">
+          <div className="bg-pool-surface animate-pulse rounded h-16 mb-2" />
+          <div className="bg-pool-surface animate-pulse rounded h-16 mb-2" />
+          <div className="bg-pool-surface animate-pulse rounded h-16 mb-2" />
         </div>
-      </div>
+      )}
+
+      {/* Error state */}
+      {!loading && error && (
+        <div className="bg-pool-err-bg border border-red-900 rounded-xl p-4 text-pool-err-fg text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* No picks empty state */}
+      {!loading && !error && data && data.teams?.length === 0 && (
+        <div className="text-center py-8 text-pool-faint text-sm">
+          <p>No picks yet for this tournament.</p>
+          <Link to={`/picks/${selectedId}`} className="text-pool-under underline mt-2 block">Make picks →</Link>
+        </div>
+      )}
+
+      {/* Leaderboard */}
+      {!loading && !error && data?.teams?.length > 0 && (
+        <div className="rounded-xl overflow-hidden border border-pool-rim">
+          {data.teams.map((team, idx) => {
+            const teamRounds = [
+              team.rounds?.[1],
+              team.rounds?.[2],
+              team.rounds?.[3],
+              team.rounds?.[4],
+            ];
+            const isExpanded = expandedTeams.has(team.team_id);
+            const sortedPlayers = sortPlayers(team.players ?? []);
+
+            return (
+              <HybridTeamRow
+                key={team.team_id}
+                rank={idx + 1}
+                teamName={team.team_name}
+                total={team.total}
+                rounds={teamRounds}
+                isExpanded={isExpanded}
+                onToggle={() => toggleTeam(team.team_id)}
+              >
+                {sortedPlayers.map(player => {
+                  const isCut = ['CUT', 'WD', 'DQ', 'MDF', 'W/D'].includes(
+                    (player.overallStatus ?? '').toUpperCase()
+                  );
+                  const playerRounds = [
+                    player.rounds?.[1],
+                    player.rounds?.[2],
+                    player.rounds?.[3],
+                    player.rounds?.[4],
+                  ];
+                  const countingRounds = [1, 2, 3, 4].map(r =>
+                    player.counting_rounds?.includes(r) ?? false
+                  );
+                  const total = playerTotal(player.rounds);
+                  const pos = isCut
+                    ? (player.overallStatus ?? 'CUT').toUpperCase()
+                    : (player.rank ?? '—');
+
+                  return (
+                    <PlayerInlineRow
+                      key={player.player_espn_id}
+                      pos={pos}
+                      name={player.player_name}
+                      thru={player.thru ?? '—'}
+                      rounds={playerRounds}
+                      countingRounds={countingRounds}
+                      total={total}
+                      isCut={isCut}
+                    />
+                  );
+                })}
+              </HybridTeamRow>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Last updated footer */}
+      {!loading && data && (
+        <LastUpdated timestamp={lastUpdated} onRefresh={refresh} loading={loading} />
+      )}
     </div>
   );
 }
