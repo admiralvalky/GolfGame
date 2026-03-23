@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import BottomNav from './BottomNav.jsx';
 
 export default function Layout({ children }) {
@@ -6,7 +7,7 @@ export default function Layout({ children }) {
       {/* Slim top bar */}
       <header className="fixed top-0 left-0 right-0 bg-pool-elevated border-b border-pool-rim z-40">
         <div className="max-w-2xl mx-auto px-4 h-12 flex items-center">
-          <span className="text-sm font-bold tracking-wide text-pool-primary">⛳ GOLF POOL</span>
+          <Link to="/" className="text-sm font-bold tracking-wide text-pool-primary">⛳ GOLF POOL</Link>
         </div>
       </header>
 
