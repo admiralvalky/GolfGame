@@ -47,7 +47,7 @@ export default function PlayerInlineRow({
       style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, alignItems: 'center', gap: '0' }}
     >
       {/* Position */}
-      <span className="text-xs text-pool-muted">{pos}</span>
+      <span className="text-[10px] text-pool-muted text-center">{pos}</span>
 
       {/* Player name */}
       <span className={`text-sm font-medium min-w-0 truncate pr-2${isCut ? ' line-through text-pool-muted' : ' text-pool-primary'}`}>

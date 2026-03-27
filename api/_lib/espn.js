@@ -37,12 +37,13 @@ export function extractThru(c, linescores) {
   if (c.status?.type?.state === 'post') return 'F';
 
   if (linescores.length === 0) return null;
-  const latestRound = linescores.reduce(
-    (max, ls) => (ls.period > max.period ? ls : max),
-    linescores[0]
-  );
-  const holesPlayed = (latestRound.linescores ?? []).length;
-  if (holesPlayed === 0) return null;
+  // ESPN pre-creates future-round entries (e.g. period 3 before R3 starts) with 0 holes.
+  // Skip those and find the most recent round that actually has hole-level data.
+  const activeRound = [...linescores]
+    .sort((a, b) => b.period - a.period)
+    .find(ls => (ls.linescores ?? []).length > 0);
+  if (!activeRound) return null;
+  const holesPlayed = activeRound.linescores.length;
   if (holesPlayed >= 18) return 'F';
   return holesPlayed;
 }
