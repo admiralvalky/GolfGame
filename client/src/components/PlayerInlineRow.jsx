@@ -1,5 +1,5 @@
 // Shared grid layout — imported by HybridTeamRow for the column header row
-export const PLAYER_GRID_COLS = '1.75rem 1fr 1.75rem 2rem 2rem 2rem 2rem 2.5rem';
+export const PLAYER_GRID_COLS = '1.25rem 1fr 1.75rem 2rem 2rem 2rem 2rem 2.5rem';
 
 function parseScore(val) {
   if (val === null || val === undefined || val === '') return null;
@@ -55,16 +55,18 @@ export default function PlayerInlineRow({
       </span>
 
       {/* Thru */}
-      <span className="text-xs text-pool-muted text-center">{thru ?? '—'}</span>
+      <span className="text-[10px] text-pool-muted text-center">{thru ?? '—'}</span>
 
       {/* Round scores */}
       {rounds.map((score, i) => {
         const isCounting = countingRounds[i] === true;
         const hasScore = score !== null && score !== undefined && String(score).trim() !== '';
 
+        const divider = i === 0 ? ' border-l border-pool-rim' : '';
+
         if (isCounting && hasScore) {
           return (
-            <span key={i} className="flex items-center justify-center">
+            <span key={i} className={`flex items-center justify-center${divider}`}>
               <span className="text-xs font-mono font-bold bg-pool-counting text-pool-counting-fg rounded px-1 py-0.5 leading-none">
                 {score}
               </span>
@@ -73,14 +75,14 @@ export default function PlayerInlineRow({
         }
 
         return (
-          <span key={i} className={`text-xs font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}`}>
+          <span key={i} className={`text-xs font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}${divider}`}>
             {hasScore ? score : '—'}
           </span>
         );
       })}
 
       {/* Total */}
-      <span className={`text-sm font-mono font-bold text-right ${totalColor(total)}`}>
+      <span className={`text-sm font-mono font-bold text-right border-l border-pool-rim pl-1 ${totalColor(total)}`}>
         {formatTotal(total)}
       </span>
     </div>
