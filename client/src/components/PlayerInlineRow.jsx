@@ -1,3 +1,6 @@
+// Shared grid layout — imported by HybridTeamRow for the column header row
+export const PLAYER_GRID_COLS = '1.75rem 1fr 1.75rem 2rem 2rem 2rem 2rem 2.5rem';
+
 function parseScore(val) {
   if (val === null || val === undefined || val === '') return null;
   const s = String(val).trim().toUpperCase();
@@ -41,7 +44,7 @@ export default function PlayerInlineRow({
   return (
     <div
       className={`bg-pool-elevated px-3 py-2${isCut ? ' opacity-40' : ''}`}
-      style={{ display: 'grid', gridTemplateColumns: '2rem 1fr 2.25rem 2.25rem 2.25rem 2.25rem 2.25rem 2.75rem', alignItems: 'center', gap: '0' }}
+      style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, alignItems: 'center', gap: '0' }}
     >
       {/* Position */}
       <span className="text-xs text-pool-muted">{pos}</span>

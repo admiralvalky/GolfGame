@@ -1,3 +1,5 @@
+import { PLAYER_GRID_COLS } from './PlayerInlineRow.jsx';
+
 function scoreColor(val) {
   if (val === null || val === undefined) return 'text-pool-faint';
   if (val === 'E' || val === 0) return 'text-pool-even';
@@ -85,6 +87,20 @@ export default function HybridTeamRow({
 
       {isExpanded && (
         <div className="bg-pool-elevated border-t border-pool-rim">
+          {/* Column header row */}
+          <div
+            className="px-3 pt-2 pb-1 border-b border-pool-rim"
+            style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, gap: '0' }}
+          >
+            <span className="text-[9px] text-pool-faint text-center">#</span>
+            <span className="text-[9px] text-pool-faint">Player</span>
+            <span className="text-[9px] text-pool-faint text-center">Thru</span>
+            <span className="text-[9px] text-pool-faint text-center">R1</span>
+            <span className="text-[9px] text-pool-faint text-center">R2</span>
+            <span className="text-[9px] text-pool-faint text-center">R3</span>
+            <span className="text-[9px] text-pool-faint text-center">R4</span>
+            <span className="text-[9px] text-pool-faint text-right">Tot</span>
+          </div>
           {children}
         </div>
       )}
