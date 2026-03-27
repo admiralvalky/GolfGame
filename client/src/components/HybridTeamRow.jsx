@@ -1,4 +1,4 @@
-import { PLAYER_GRID_COLS } from './PlayerInlineRow.jsx';
+import { PLAYER_GRID_COLS, DIVIDER } from './PlayerInlineRow.jsx';
 
 function scoreColor(val) {
   if (val === null || val === undefined) return 'text-pool-faint';
@@ -95,11 +95,13 @@ export default function HybridTeamRow({
             <span className="text-[9px] text-pool-faint text-center">#</span>
             <span className="text-[9px] text-pool-faint">Player</span>
             <span className="text-[9px] text-pool-faint text-center">Thru</span>
-            <span className="text-[9px] text-pool-faint text-center border-l border-pool-rim">R1</span>
+            <span style={DIVIDER} />
+            <span className="text-[9px] text-pool-faint text-center">R1</span>
             <span className="text-[9px] text-pool-faint text-center">R2</span>
             <span className="text-[9px] text-pool-faint text-center">R3</span>
             <span className="text-[9px] text-pool-faint text-center">R4</span>
-            <span className="text-[9px] text-pool-faint text-right border-l border-pool-rim pl-1">Tot</span>
+            <span style={DIVIDER} />
+            <span className="text-[9px] text-pool-faint text-right pl-1">Tot</span>
           </div>
           {children}
         </div>
