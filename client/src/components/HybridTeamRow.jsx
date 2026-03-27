@@ -1,4 +1,17 @@
-import { PLAYER_GRID_COLS, DIVIDER } from './PlayerInlineRow.jsx';
+import { PLAYER_GRID_COLS } from './PlayerInlineRow.jsx';
+
+// Absolute-positioned divider lines on the expanded container.
+// Calculated from the RIGHT edge: right-padding(0.75rem) + fixed column widths.
+// Tot divider (between R4 and Tot):  0.75 + 2.5 = 3.25rem
+// R1 divider  (between Thru and R1): 0.75 + 2.5 + 2 + 2 + 2 + 2 = 11.25rem
+const DIVIDER_STYLE = {
+  position: 'absolute',
+  top: 0,
+  bottom: 0,
+  width: '1px',
+  background: 'rgba(45,90,61,0.28)',
+  pointerEvents: 'none',
+};
 
 function scoreColor(val) {
   if (val === null || val === undefined) return 'text-pool-faint';
@@ -86,22 +99,24 @@ export default function HybridTeamRow({
       </button>
 
       {isExpanded && (
-        <div className="bg-pool-elevated border-t border-pool-rim">
+        <div className="bg-pool-elevated border-t border-pool-rim" style={{ position: 'relative' }}>
+          {/* Continuous vertical dividers — span the full height of this container */}
+          <div style={{ ...DIVIDER_STYLE, right: '3.25rem' }} />
+          <div style={{ ...DIVIDER_STYLE, right: '11.25rem' }} />
+
           {/* Column header row */}
           <div
             className="px-3 pt-2 pb-1 border-b border-pool-rim"
             style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, gap: '0' }}
           >
-            <span className="text-[9px] text-pool-faint text-center">#</span>
-            <span className="text-[9px] text-pool-faint">Player</span>
-            <span className="text-[9px] text-pool-faint text-center">Thru</span>
-            <span style={DIVIDER} />
-            <span className="text-[9px] text-pool-faint text-center">R1</span>
-            <span className="text-[9px] text-pool-faint text-center">R2</span>
-            <span className="text-[9px] text-pool-faint text-center">R3</span>
-            <span className="text-[9px] text-pool-faint text-center">R4</span>
-            <span style={DIVIDER} />
-            <span className="text-[9px] text-pool-faint text-right pl-1">Tot</span>
+            <span className="block text-[9px] text-pool-faint text-center">#</span>
+            <span className="block text-[9px] text-pool-faint">Player</span>
+            <span className="block text-[9px] text-pool-faint text-center">Thru</span>
+            <span className="block text-[9px] text-pool-faint text-center">R1</span>
+            <span className="block text-[9px] text-pool-faint text-center">R2</span>
+            <span className="block text-[9px] text-pool-faint text-center">R3</span>
+            <span className="block text-[9px] text-pool-faint text-center">R4</span>
+            <span className="block text-[9px] text-pool-faint text-right">Tot</span>
           </div>
           {children}
         </div>

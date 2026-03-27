@@ -1,7 +1,6 @@
 // Shared grid layout — imported by HybridTeamRow for the column header row.
-// The two 1px columns are vertical dividers rendered as full-height spans.
-export const PLAYER_GRID_COLS = '1.5rem 1fr 1.75rem 1px 2rem 2rem 2rem 2rem 1px 2.5rem';
-export const DIVIDER = { alignSelf: 'stretch', background: 'rgba(45,90,61,0.22)' };
+// Dividers are NOT in this grid; they are absolutely positioned on the container in HybridTeamRow.
+export const PLAYER_GRID_COLS = '1.5rem 1fr 1.75rem 2rem 2rem 2rem 2rem 2.5rem';
 
 function parseScore(val) {
   if (val === null || val === undefined || val === '') return null;
@@ -14,9 +13,9 @@ function parseScore(val) {
 function nonCountingColor(val) {
   const n = parseScore(val);
   if (n === null) return 'text-pool-faint';
-  if (n > 0) return 'text-pool-over'; // red for over-par
-  if (n < 0) return 'text-pool-secondary'; // subtle for under-par
-  return 'text-pool-even'; // gray for even
+  if (n > 0) return 'text-pool-over';
+  if (n < 0) return 'text-pool-secondary';
+  return 'text-pool-even';
 }
 
 function totalColor(val) {
@@ -48,8 +47,8 @@ export default function PlayerInlineRow({
       className={`bg-pool-elevated px-3 py-2${isCut ? ' opacity-40' : ''}`}
       style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, alignItems: 'center', gap: '0' }}
     >
-      {/* Position */}
-      <span className="text-[10px] text-pool-muted text-center">{pos}</span>
+      {/* Position — block ensures the span fills its grid cell so text-center works */}
+      <span className="block text-[10px] text-pool-muted text-center">{pos}</span>
 
       {/* Player name */}
       <span className={`text-sm font-medium min-w-0 truncate pr-2${isCut ? ' line-through text-pool-muted' : ' text-pool-primary'}`}>
@@ -57,10 +56,7 @@ export default function PlayerInlineRow({
       </span>
 
       {/* Thru */}
-      <span className="text-[10px] text-pool-muted text-center">{thru ?? '—'}</span>
-
-      {/* Divider — spans full row height as a grid column item */}
-      <span style={DIVIDER} />
+      <span className="block text-[10px] text-pool-muted text-center">{thru ?? '—'}</span>
 
       {/* Round scores R1–R4 */}
       {rounds.map((score, i) => {
@@ -78,17 +74,14 @@ export default function PlayerInlineRow({
         }
 
         return (
-          <span key={i} className={`text-xs font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}`}>
+          <span key={i} className={`block text-xs font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}`}>
             {hasScore ? score : '—'}
           </span>
         );
       })}
 
-      {/* Divider — spans full row height as a grid column item */}
-      <span style={DIVIDER} />
-
       {/* Total */}
-      <span className={`text-sm font-mono font-bold text-right pl-1 ${totalColor(total)}`}>
+      <span className={`block text-sm font-mono font-bold text-right ${totalColor(total)}`}>
         {formatTotal(total)}
       </span>
     </div>
