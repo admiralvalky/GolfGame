@@ -7,6 +7,7 @@ import Picks from './pages/Picks.jsx';
 import Scoreboard from './pages/Scoreboard.jsx';
 import TeamDetail from './pages/TeamDetail.jsx';
 import Season from './pages/Season.jsx';
+import TeamSeasonStats from './pages/TeamSeasonStats.jsx';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="/scoreboard" element={<Scoreboard />} />
             <Route path="/team/:teamId" element={<TeamDetail />} />
             <Route path="/season" element={<Season />} />
+            <Route path="/season/team/:teamId" element={<TeamSeasonStats />} />
           </Routes>
         </Layout>
       </BrowserRouter>

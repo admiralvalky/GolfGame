@@ -21,10 +21,10 @@ export default async function handler(req, res) {
     return res.json({ teams: [], tournaments: [] });
   }
 
+  // Build per-tournament score maps
   const tournamentResults = [];
 
   for (const tournament of tournaments ?? []) {
-    // Get teams with picks for this tournament
     const { data: pickRows } = await supabase
       .from('picks')
       .select('team_id, teams!inner(id, name)')
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       ({ scoreMap: playerScores } = await fetchPlayerScores(supabase, tournament.espn_tournament_id, tournament.status));
     } catch (err) {
       console.error(`Failed scores for tournament ${tournament.id}:`, err.message);
-      tournamentResults.push({ tournament, scores: {} });
+      tournamentResults.push({ tournament, scores: {}, finishRanks: {} });
       continue;
     }
 
@@ -61,37 +61,88 @@ export default async function handler(req, res) {
       scores[team.id] = total;
     }
 
-    tournamentResults.push({ tournament, scores });
+    // Rank teams within this tournament (ties share rank, next rank skips)
+    const finishRanks = {};
+    const ranked = Object.entries(scores)
+      .filter(([, s]) => s !== null && s !== undefined)
+      .sort(([, a], [, b]) => a - b);
+    let r = 1;
+    for (let i = 0; i < ranked.length; ) {
+      let j = i;
+      while (j < ranked.length && ranked[j][1] === ranked[i][1]) j++;
+      for (let k = i; k < j; k++) finishRanks[ranked[k][0]] = r;
+      r = j + 1;
+      i = j;
+    }
+
+    tournamentResults.push({ tournament, scores, finishRanks });
   }
 
-  // Build season totals
+  // Build per-team season stats
   const seasonTotals = allTeams.map((team) => {
     const byTournament = {};
-    let total = 0;
+    const byTournamentFinish = {};
+    const finishes = { 1: 0, 2: 0, 3: 0 };
+    let scoreSum = 0;
+    let finishSum = 0;
     let played = 0;
 
-    for (const { tournament, scores } of tournamentResults) {
-      const s = scores[team.id];
-      byTournament[tournament.id] = s ?? null;
-      if (s !== null && s !== undefined) {
-        total += s;
+    for (const { tournament, scores, finishRanks } of tournamentResults) {
+      const score = scores[team.id];
+      const finish = finishRanks[team.id];
+      byTournament[tournament.id] = score ?? null;
+      byTournamentFinish[tournament.id] = finish ?? null;
+
+      if (score !== null && score !== undefined) {
         played++;
+        scoreSum += score;
+        if (finish !== undefined) {
+          finishSum += finish;
+          if (finish <= 3) finishes[finish] = (finishes[finish] ?? 0) + 1;
+        }
       }
     }
 
-    return { team_id: team.id, team_name: team.name, byTournament, total, played };
+    return {
+      team_id: team.id,
+      team_name: team.name,
+      byTournament,
+      byTournamentFinish,
+      finishes,
+      avgFinish: played > 0 ? Math.round((finishSum / played) * 10) / 10 : null,
+      avgScore: played > 0 ? Math.round((scoreSum / played) * 10) / 10 : null,
+      total: played > 0 ? scoreSum : null,
+      played,
+    };
   });
 
+  // Sort by record-book criteria: wins → 2nds → 3rds → avg finish → avg score
+  // Teams with 0 tournaments played rank last
   seasonTotals.sort((a, b) => {
     if (a.played === 0 && b.played === 0) return 0;
     if (a.played === 0) return 1;
     if (b.played === 0) return -1;
-    return a.total - b.total;
+    if (b.finishes[1] !== a.finishes[1]) return b.finishes[1] - a.finishes[1];
+    if (b.finishes[2] !== a.finishes[2]) return b.finishes[2] - a.finishes[2];
+    if (b.finishes[3] !== a.finishes[3]) return b.finishes[3] - a.finishes[3];
+    if (a.avgFinish !== b.avgFinish) return (a.avgFinish ?? 999) - (b.avgFinish ?? 999);
+    return (a.avgScore ?? 999) - (b.avgScore ?? 999);
   });
 
+  // Assign display ranks (ties share rank when wins+podiums+avgFinish all equal)
   let rank = 1;
   for (let i = 0; i < seasonTotals.length; i++) {
-    if (i > 0 && seasonTotals[i].total !== seasonTotals[i - 1].total) rank = i + 1;
+    if (i > 0) {
+      const a = seasonTotals[i - 1];
+      const b = seasonTotals[i];
+      const tied =
+        a.finishes[1] === b.finishes[1] &&
+        a.finishes[2] === b.finishes[2] &&
+        a.finishes[3] === b.finishes[3] &&
+        a.avgFinish === b.avgFinish &&
+        a.avgScore === b.avgScore;
+      if (!tied) rank = i + 1;
+    }
     seasonTotals[i].rank = rank;
   }
 
