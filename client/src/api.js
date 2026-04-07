@@ -18,6 +18,7 @@ export const deleteTeam = (id) => api.delete(`/teams?id=${id}`).then((r) => r.da
 // ── Tournaments ───────────────────────────────────────────────────────────────
 export const getTournaments = () => api.get('/tournaments').then((r) => r.data);
 export const saveTournament = (data) => api.post('/tournaments', data).then((r) => r.data);
+export const deleteTournament = (id) => api.delete(`/tournaments?id=${id}`).then((r) => r.data);
 export const updateTournamentStatus = (id, status) =>
   api.patch(`/tournaments?id=${id}`, { status }).then((r) => r.data);
 

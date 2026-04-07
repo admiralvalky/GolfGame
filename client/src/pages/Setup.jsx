@@ -7,6 +7,7 @@ import {
   getEspnSchedule,
   getTournaments,
   saveTournament,
+  deleteTournament,
 } from '../api.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -78,6 +79,12 @@ export default function Setup() {
     if (!confirm('Delete this team and all their picks?')) return;
     await deleteTeam(id);
     await loadTeams();
+  }
+
+  async function handleDeleteTournament(id, name) {
+    if (!confirm(`Delete "${name}" and all its picks?`)) return;
+    await deleteTournament(id);
+    await loadSavedTournaments();
   }
 
   async function handleSaveTournament() {
@@ -231,6 +238,12 @@ export default function Setup() {
                         Pick Players →
                       </Link>
                     )}
+                    <button
+                      onClick={() => handleDeleteTournament(t.id, t.name)}
+                      className="text-red-400 hover:text-red-600 text-xs"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </li>
               ))}
