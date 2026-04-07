@@ -90,7 +90,36 @@ export async function fetchRoundsFromCoreApi(espnTournamentId, playerIds) {
   return roundsMap;
 }
 
+function buildScoreMapFromCache(rows) {
+  const scoreMap = new Map();
+  for (const row of rows) {
+    scoreMap.set(row.player_espn_id, {
+      rounds: row.rounds_json,
+      thru: row.thru,
+      overallStatus: row.overall_status ?? '',
+      totalScore: row.total_score ?? '',
+      rank: row.rank ?? null,
+    });
+  }
+  return scoreMap;
+}
+
 export async function fetchPlayerScores(supabase, espnTournamentId, status = '') {
+  // Completed tournaments: serve from cache only — ESPN clears linescores after events
+  // end which would corrupt the cache if we allowed writes.
+  if (status === 'post') {
+    const { data: cached } = await supabase
+      .from('cached_player_scores')
+      .select('*')
+      .eq('espn_tournament_id', espnTournamentId);
+    if (cached && cached.length > 0) {
+      console.log(`Serving post-tournament scores from cache for ${espnTournamentId}`);
+      return { scoreMap: buildScoreMapFromCache(cached), venue: { course: null, par: null } };
+    }
+    // Cache miss for a post tournament — fall through to ESPN as last resort
+    console.warn(`No cache for completed tournament ${espnTournamentId}, falling back to ESPN`);
+  }
+
   const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${espnTournamentId}`;
   let competitors = [];
   let venue = { course: null, par: null };
@@ -118,17 +147,7 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
 
     if (rows && rows.length > 0) {
       console.log(`Using DB-cached scores for ESPN tournament ${espnTournamentId}`);
-      const scoreMap = new Map();
-      for (const row of rows) {
-        scoreMap.set(row.player_espn_id, {
-          rounds: row.rounds_json,
-          thru: row.thru,
-          overallStatus: row.overall_status ?? '',
-          totalScore: row.total_score ?? '',
-          rank: row.rank ?? null,
-        });
-      }
-      return { scoreMap, venue };
+      return { scoreMap: buildScoreMapFromCache(rows), venue };
     }
     throw new Error(`No score data available for ESPN tournament ${espnTournamentId}`);
   }
@@ -207,22 +226,27 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     i = j;
   }
 
-  // Persist to Supabase
+  // Persist to Supabase — only rows with actual round data so we never
+  // overwrite good historical scores with empty ESPN responses.
   try {
     const now = new Date().toISOString();
-    const rows = [...scoreMap].map(([playerId, data]) => ({
-      espn_tournament_id: espnTournamentId,
-      player_espn_id: playerId,
-      rounds_json: data.rounds,
-      thru: data.thru != null ? String(data.thru) : null,
-      overall_status: data.overallStatus ?? null,
-      total_score: data.totalScore ?? null,
-      rank: data.rank ?? null,
-      saved_at: now,
-    }));
-    await supabase
-      .from('cached_player_scores')
-      .upsert(rows, { onConflict: 'espn_tournament_id,player_espn_id' });
+    const rows = [...scoreMap]
+      .filter(([, data]) => Object.keys(data.rounds ?? {}).length > 0)
+      .map(([playerId, data]) => ({
+        espn_tournament_id: espnTournamentId,
+        player_espn_id: playerId,
+        rounds_json: data.rounds,
+        thru: data.thru != null ? String(data.thru) : null,
+        overall_status: data.overallStatus ?? null,
+        total_score: data.totalScore ?? null,
+        rank: data.rank ?? null,
+        saved_at: now,
+      }));
+    if (rows.length > 0) {
+      await supabase
+        .from('cached_player_scores')
+        .upsert(rows, { onConflict: 'espn_tournament_id,player_espn_id' });
+    }
   } catch (err) {
     console.error('Failed to cache scores to DB:', err.message);
   }
