@@ -13,6 +13,7 @@ export const getEspnTournamentDetails = (espnId) =>
 // ── Teams ─────────────────────────────────────────────────────────────────────
 export const getTeams = () => api.get('/teams').then((r) => r.data);
 export const createTeam = (name) => api.post('/teams', { name }).then((r) => r.data);
+export const updateTeam = (id, name) => api.patch(`/teams?id=${id}`, { name }).then((r) => r.data);
 export const deleteTeam = (id) => api.delete(`/teams?id=${id}`).then((r) => r.data);
 
 // ── Tournaments ───────────────────────────────────────────────────────────────

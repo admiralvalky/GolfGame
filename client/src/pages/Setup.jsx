@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getTeams,
   createTeam,
+  updateTeam,
   deleteTeam,
   getEspnSchedule,
   getTournaments,
@@ -18,6 +19,9 @@ export default function Setup() {
   const [newTeamName, setNewTeamName] = useState('');
   const [teamError, setTeamError] = useState('');
   const [teamLoading, setTeamLoading] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState(null);
+  const [editingTeamName, setEditingTeamName] = useState('');
+  const editInputRef = useRef(null);
 
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR >= 2025 ? CURRENT_YEAR : 2025);
   const [scheduleByYear, setScheduleByYear] = useState({});
@@ -72,6 +76,30 @@ export default function Setup() {
       setTeamError(err.response?.data?.error ?? err.message);
     } finally {
       setTeamLoading(false);
+    }
+  }
+
+  function startEditTeam(team) {
+    setEditingTeamId(team.id);
+    setEditingTeamName(team.name);
+    setTimeout(() => editInputRef.current?.focus(), 0);
+  }
+
+  function cancelEditTeam() {
+    setEditingTeamId(null);
+    setEditingTeamName('');
+  }
+
+  async function handleRenameTeam(id) {
+    const trimmed = editingTeamName.trim();
+    if (!trimmed) return;
+    try {
+      await updateTeam(id, trimmed);
+      setEditingTeamId(null);
+      setEditingTeamName('');
+      await loadTeams();
+    } catch (err) {
+      setTeamError(err.response?.data?.error ?? err.message);
     }
   }
 
@@ -137,14 +165,29 @@ export default function Setup() {
         ) : (
           <ul className="divide-y divide-pool-rim">
             {teams.map((team) => (
-              <li key={team.id} className="flex items-center justify-between py-2.5">
-                <span className="font-medium text-sm text-pool-primary">{team.name}</span>
-                <button
-                  onClick={() => handleDeleteTeam(team.id)}
-                  className="text-red-400 hover:text-red-600 text-xs"
-                >
-                  Delete
-                </button>
+              <li key={team.id} className="flex items-center gap-2 py-2.5">
+                {editingTeamId === team.id ? (
+                  <>
+                    <input
+                      ref={editInputRef}
+                      value={editingTeamName}
+                      onChange={(e) => setEditingTeamName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRenameTeam(team.id);
+                        if (e.key === 'Escape') cancelEditTeam();
+                      }}
+                      className="flex-1 bg-pool-surface border border-pool-rim text-pool-primary rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under"
+                    />
+                    <button onClick={() => handleRenameTeam(team.id)} className="text-pool-under text-xs font-medium hover:text-green-400">Save</button>
+                    <button onClick={cancelEditTeam} className="text-pool-muted text-xs hover:text-pool-primary">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 font-medium text-sm text-pool-primary">{team.name}</span>
+                    <button onClick={() => startEditTeam(team)} className="text-pool-muted hover:text-pool-primary text-xs">Rename</button>
+                    <button onClick={() => handleDeleteTeam(team.id)} className="text-red-400 hover:text-red-600 text-xs">Delete</button>
+                  </>
+                )}
               </li>
             ))}
           </ul>

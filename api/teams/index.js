@@ -29,6 +29,24 @@ export default async function handler(req, res) {
     return res.status(201).json({ team });
   }
 
+  if (req.method === 'PATCH') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id query parameter required' });
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
+    const { data: team, error } = await supabase
+      .from('teams')
+      .update({ name: name.trim() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'Team name already exists' });
+      return res.status(500).json({ error: error.message });
+    }
+    return res.json({ team });
+  }
+
   if (req.method === 'DELETE') {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'id query parameter required' });
