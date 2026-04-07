@@ -256,14 +256,14 @@ export default function Setup() {
         {/* Saved Tournaments */}
         {savedTournaments.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium text-pool-muted mb-2">Saved Tournaments</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-pool-faint mb-3">Saved</h3>
             <ul className="divide-y divide-pool-rim">
               {savedTournaments.map((t) => (
-                <li key={t.id} className="flex items-center justify-between py-2.5">
-                  <span className="text-sm text-pool-primary">{t.name}</span>
+                <li key={t.id} className="py-3 space-y-1.5">
+                  <span className="block text-sm font-medium text-pool-primary leading-snug">{t.name}</span>
                   <div className="flex items-center gap-3">
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
+                      className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${
                         t.status === 'in'
                           ? 'bg-pool-surface text-pool-under'
                           : t.status === 'post'
@@ -271,19 +271,19 @@ export default function Setup() {
                           : 'bg-pool-elevated text-pool-gold'
                       }`}
                     >
-                      {t.status}
+                      {t.status === 'in' ? 'Live' : t.status === 'post' ? 'Final' : 'Upcoming'}
                     </span>
                     {teams.length > 0 && (
                       <Link
                         to={`/picks/${t.id}`}
-                        className="text-xs text-pool-under underline hover:text-green-400"
+                        className="text-xs text-pool-under hover:text-green-400"
                       >
                         Pick Players →
                       </Link>
                     )}
                     <button
                       onClick={() => handleDeleteTournament(t.id, t.name)}
-                      className="text-red-400 hover:text-red-600 text-xs"
+                      className="text-red-400 hover:text-red-600 text-xs ml-auto"
                     >
                       Delete
                     </button>
