@@ -27,7 +27,7 @@ export default function PlayerPicker({ players = [], selected = [], onToggle, ma
           placeholder="Search players…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border border-pool-rim rounded px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-pool-under"
+          className="border border-pool-rim rounded px-3 py-2 text-sm flex-1 bg-pool-elevated text-pool-primary placeholder-pool-faint focus:outline-none focus:ring-2 focus:ring-pool-under"
         />
         <span className="text-sm text-pool-muted whitespace-nowrap">
           {selected.length}/{max}
