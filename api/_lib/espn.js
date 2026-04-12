@@ -220,11 +220,14 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
   // Third pass: compute display ranks
   const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF']);
   const active = [];
+  const cutPlayers = [];
   for (const [id, data] of scoreMap) {
+    const s = data.totalScore.toUpperCase();
+    const n = s === 'E' ? 0 : parseInt(s, 10);
     if (!CUT_STATUSES.has(data.overallStatus)) {
-      const s = data.totalScore.toUpperCase();
-      const n = s === 'E' ? 0 : parseInt(s, 10);
       if (!isNaN(n)) active.push({ id, score: n });
+    } else {
+      if (!isNaN(n)) cutPlayers.push({ id, score: n });
     }
   }
   active.sort((a, b) => a.score - b.score);
@@ -233,6 +236,17 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     while (j < active.length && active[j].score === active[i].score) j++;
     const display = j - i > 1 ? `T${i + 1}` : String(i + 1);
     for (let k = i; k < j; k++) scoreMap.get(active[k].id).rank = display;
+    i = j;
+  }
+  // Rank cut/WD/DQ players separately, numbered after all active players.
+  const cutStartOffset = active.length;
+  cutPlayers.sort((a, b) => a.score - b.score);
+  for (let i = 0; i < cutPlayers.length; ) {
+    let j = i;
+    while (j < cutPlayers.length && cutPlayers[j].score === cutPlayers[i].score) j++;
+    const rankNum = cutStartOffset + i + 1;
+    const display = j - i > 1 ? `T${rankNum}` : String(rankNum);
+    for (let k = i; k < j; k++) scoreMap.get(cutPlayers[k].id).rank = display;
     i = j;
   }
 

@@ -45,19 +45,19 @@ export default function PlayerInlineRow({
 }) {
   return (
     <div
-      className={`bg-pool-elevated px-3 py-2${isCut ? ' opacity-40' : ''}`}
+      className="bg-pool-elevated px-3 py-2"
       style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, alignItems: 'center', gap: '0' }}
     >
       {/* Position — block ensures the span fills its grid cell so text-center works */}
       <span className="block text-[10px] text-pool-muted text-center">{pos}</span>
 
-      {/* Player name */}
-      <span className="text-sm font-medium min-w-0 truncate pr-2 text-pool-primary">
+      {/* Player name — greyed for cut players */}
+      <span className={`text-sm font-medium min-w-0 truncate pr-2${isCut ? ' opacity-40 text-pool-muted' : ' text-pool-primary'}`}>
         {name}
       </span>
 
-      {/* Thru */}
-      <span className="block text-[10px] text-pool-muted text-center">{thru ?? '—'}</span>
+      {/* Thru — greyed for cut players */}
+      <span className={`block text-[10px] text-center${isCut ? ' opacity-40 text-pool-muted' : ' text-pool-muted'}`}>{thru ?? '—'}</span>
 
       {/* Round scores R1–R4 */}
       {rounds.map((score, i) => {
@@ -74,14 +74,24 @@ export default function PlayerInlineRow({
           );
         }
 
+        // Unplayed rounds for cut players — show status label, greyed
+        if (!hasScore && isCut) {
+          return (
+            <span key={i} className="block text-xs font-mono text-center opacity-40 text-pool-faint">
+              {overallStatus || 'CUT'}
+            </span>
+          );
+        }
+
+        // Played rounds — full color whether cut or not
         return (
           <span key={i} className={`block text-xs font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}`}>
-            {hasScore ? score : (isCut && overallStatus ? overallStatus : '—')}
+            {hasScore ? score : '—'}
           </span>
         );
       })}
 
-      {/* Total */}
+      {/* Total — full color whether cut or not */}
       <span className={`block text-sm font-mono font-bold text-right ${totalColor(total)}`}>
         {formatTotal(total)}
       </span>
