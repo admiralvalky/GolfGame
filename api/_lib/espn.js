@@ -15,11 +15,17 @@ export function deriveOverallStatus(c, linescores, maxRound) {
   if (desc === 'MDF' || name.includes('MDF')) return 'MDF';
 
   if (linescores.length > 0) {
-    const playerMaxRound = Math.max(...linescores.map(ls => ls.period));
-    const allRoundsComplete = linescores.every(ls => (ls.linescores ?? []).length >= 18);
-    if (allRoundsComplete) {
-      if (maxRound >= 3 && playerMaxRound <= 2) return 'CUT';
-      if (maxRound >= 4 && playerMaxRound === 3) return 'MDF';
+    // Ignore pre-created empty rounds (same fix as extractThru) — ESPN adds a
+    // period N+1 entry with 0 holes for all players before that round starts,
+    // including players who were cut and will never play it.
+    const roundsWithData = linescores.filter(ls => (ls.linescores ?? []).length > 0);
+    if (roundsWithData.length > 0) {
+      const playerMaxRound = Math.max(...roundsWithData.map(ls => ls.period));
+      const allRoundsComplete = roundsWithData.every(ls => ls.linescores.length >= 18);
+      if (allRoundsComplete) {
+        if (maxRound >= 3 && playerMaxRound <= 2) return 'CUT';
+        if (maxRound >= 4 && playerMaxRound === 3) return 'MDF';
+      }
     }
   }
 
@@ -152,11 +158,12 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     throw new Error(`No score data available for ESPN tournament ${espnTournamentId}`);
   }
 
-  // First pass: determine max round
+  // First pass: determine max round — only count rounds with actual hole data
+  // to avoid pre-created empty future-round entries inflating the count.
   let maxRound = 0;
   for (const c of competitors) {
     for (const ls of c.linescores ?? []) {
-      if (ls.period > maxRound) maxRound = ls.period;
+      if (ls.period > maxRound && (ls.linescores ?? []).length > 0) maxRound = ls.period;
     }
   }
 
