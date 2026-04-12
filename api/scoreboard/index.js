@@ -61,12 +61,29 @@ export default async function handler(req, res) {
     results.push({ team_id: team.id, team_name: team.name, total, rounds: roundScores, players });
   }
 
-  // Sort: lower total wins; null scores go last
+  // Best (lowest) numeric rank among a team's players — used as tiebreaker.
+  // Player rank strings: "1", "T5", "T22". All-cut teams return Infinity.
+  function bestPlayerRank(team) {
+    let best = Infinity;
+    for (const p of team.players ?? []) {
+      if (!p.rank) continue;
+      const n = parseInt(String(p.rank).replace('T', ''), 10);
+      if (!isNaN(n) && n < best) best = n;
+    }
+    return best;
+  }
+
+  // Sort: lower total wins; null scores go last.
+  // Tiebreaker 1: team with best (lowest) individual player rank wins.
+  // Tiebreaker 2: alphabetical by team name.
   results.sort((a, b) => {
-    if (a.total === null && b.total === null) return 0;
+    if (a.total === null && b.total === null) return a.team_name.localeCompare(b.team_name);
     if (a.total === null) return 1;
     if (b.total === null) return -1;
-    return a.total - b.total;
+    if (a.total !== b.total) return a.total - b.total;
+    const rankDiff = bestPlayerRank(a) - bestPlayerRank(b);
+    if (rankDiff !== 0) return rankDiff;
+    return a.team_name.localeCompare(b.team_name);
   });
 
   let rank = 1;

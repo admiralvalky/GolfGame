@@ -7,6 +7,13 @@ import HybridTeamRow from '../components/HybridTeamRow.jsx';
 import PlayerInlineRow from '../components/PlayerInlineRow.jsx';
 import LastUpdated from '../components/LastUpdated.jsx';
 
+function tournamentDisplayName(t) {
+  if (!t) return '—';
+  const year = t.start_date ? new Date(t.start_date).getFullYear() : null;
+  const suffix = year ? ` '${String(year).slice(2)}` : '';
+  return `${t.name}${suffix}`;
+}
+
 function shouldAutoRefresh(tournament) {
   if (!tournament) return false;
   const now = new Date();
@@ -125,7 +132,7 @@ export default function Home() {
           aria-expanded={dropdownOpen}
         >
           <h1 className="text-2xl font-bold text-pool-primary group-hover:text-pool-secondary transition-colors leading-tight">
-            {selectedTournament?.name ?? '—'}
+            {tournamentDisplayName(selectedTournament)}
           </h1>
           {tournaments.length > 1 && (
             <svg
@@ -158,7 +165,7 @@ export default function Home() {
                     : 'text-pool-secondary border-transparent'
                 }`}
               >
-                {t.name}
+                {tournamentDisplayName(t)}
               </button>
             ))}
           </div>
@@ -222,7 +229,7 @@ export default function Home() {
             return (
               <HybridTeamRow
                 key={team.team_id}
-                rank={idx + 1}
+                rank={team.rank}
                 teamName={team.team_name}
                 total={team.total}
                 rounds={teamRounds}
@@ -257,6 +264,7 @@ export default function Home() {
                       countingRounds={countingRounds}
                       total={total}
                       isCut={isCut}
+                      overallStatus={player.overallStatus ?? ''}
                     />
                   );
                 })}

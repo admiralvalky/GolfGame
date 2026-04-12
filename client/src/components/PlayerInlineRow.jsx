@@ -41,6 +41,7 @@ export default function PlayerInlineRow({
   countingRounds = [false, false, false, false],
   total,
   isCut = false,
+  overallStatus = '',
 }) {
   return (
     <div
@@ -75,7 +76,7 @@ export default function PlayerInlineRow({
 
         return (
           <span key={i} className={`block text-xs font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}`}>
-            {hasScore ? score : '—'}
+            {hasScore ? score : (isCut && overallStatus ? overallStatus : '—')}
           </span>
         );
       })}

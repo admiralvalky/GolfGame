@@ -32,7 +32,7 @@ function rankStyle(rank) {
 
 function formatScore(val) {
   if (val === null || val === undefined) return '—';
-  if (val === 'E') return 'E';
+  if (val === 'E' || val === 0) return 'E';
   if (typeof val === 'number') {
     if (val > 0) return `+${val}`;
     return String(val);
