@@ -250,9 +250,7 @@ export default function Home() {
                     player.counting_rounds?.includes(r) ?? false
                   );
                   const total = playerTotal(player.rounds);
-                  const pos = isCut
-                    ? (player.overallStatus ?? 'CUT').toUpperCase()
-                    : (player.rank ?? '—');
+                  const pos = player.rank ?? '—';
 
                   return (
                     <PlayerInlineRow

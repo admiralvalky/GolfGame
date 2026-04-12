@@ -52,7 +52,7 @@ export default function PlayerInlineRow({
       <span className="block text-[10px] text-pool-muted text-center">{pos}</span>
 
       {/* Player name */}
-      <span className={`text-sm font-medium min-w-0 truncate pr-2${isCut ? ' line-through text-pool-muted' : ' text-pool-primary'}`}>
+      <span className="text-sm font-medium min-w-0 truncate pr-2 text-pool-primary">
         {name}
       </span>
 

@@ -173,7 +173,10 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     const linescores = c.linescores ?? [];
     const rounds = {};
     for (const ls of linescores) {
-      if (ls.period && ls.displayValue != null && ls.displayValue.trim() !== '') {
+      // Only store a round total if the period has actual hole data.
+      // ESPN sets displayValue="-" on pre-created empty future-round entries,
+      // which would make hasScore=true and suppress the CUT label in the UI.
+      if (ls.period && ls.displayValue != null && ls.displayValue.trim() !== '' && (ls.linescores ?? []).length > 0) {
         rounds[ls.period] = ls.displayValue.trim();
       }
     }
