@@ -238,19 +238,29 @@ function buildScoreMapFromCache(rows) {
 }
 
 export async function fetchPlayerScores(supabase, espnTournamentId, status = '') {
-  // Completed tournaments: serve from cache only — ESPN clears linescores after events
-  // end which would corrupt the cache if we allowed writes.
+  // Completed tournaments: serve from cache — ESPN clears linescores after events end.
   if (status === 'post') {
     const { data: cached } = await supabase
       .from('cached_player_scores')
       .select('*')
       .eq('espn_tournament_id', espnTournamentId);
     if (cached && cached.length > 0) {
-      console.log(`Serving post-tournament scores from cache for ${espnTournamentId}`);
-      return { scoreMap: buildScoreMapFromCache(cached), venue: { course: null, par: null } };
+      // Validate cache completeness. If no player has R3/R4 data the cache was likely
+      // written mid-tournament (or from the wrong event) and needs to be refreshed.
+      // Players who made the cut always have R3+ data in a completed tournament.
+      const hasLaterRoundData = cached.some(row => {
+        const r = row.rounds_json ?? {};
+        return r['3'] != null || r['4'] != null;
+      });
+      if (hasLaterRoundData) {
+        console.log(`Serving post-tournament scores from cache for ${espnTournamentId}`);
+        return { scoreMap: buildScoreMapFromCache(cached), venue: { course: null, par: null } };
+      }
+      console.warn(`Post-tournament cache for ${espnTournamentId} has no R3/R4 data — stale or wrong event, refreshing`);
+      // Fall through to re-fetch; persistScoreCache will overwrite the stale rows.
+    } else {
+      console.warn(`No cache for completed tournament ${espnTournamentId}, falling back to ESPN`);
     }
-    // Cache miss for a post tournament — fall through to ESPN as last resort
-    console.warn(`No cache for completed tournament ${espnTournamentId}, falling back to ESPN`);
   }
 
   const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${espnTournamentId}`;
