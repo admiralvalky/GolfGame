@@ -5,10 +5,20 @@ import { useAutoRefresh } from '../hooks/useAutoRefresh.js';
 import LastUpdated from '../components/LastUpdated.jsx';
 
 function RankBadge({ rank }) {
-  if (rank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-400 text-white text-xs font-bold flex-shrink-0">1</span>;
-  if (rank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-500 text-gray-200 text-xs font-bold flex-shrink-0">2</span>;
-  if (rank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-orange-400 text-white text-xs font-bold flex-shrink-0">3</span>;
-  return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-pool-elevated text-pool-muted text-xs font-bold flex-shrink-0">{rank}</span>;
+  if (rank === 1) return <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-400 text-white text-sm font-bold flex-shrink-0">1</span>;
+  if (rank === 2) return <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-500 text-gray-200 text-sm font-bold flex-shrink-0">2</span>;
+  if (rank === 3) return <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-400 text-white text-sm font-bold flex-shrink-0">3</span>;
+  return <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pool-surface text-pool-muted text-sm font-bold flex-shrink-0">{rank}</span>;
+}
+
+function Medal({ emoji, count }) {
+  if (!count) return null;
+  return (
+    <span className="flex items-center gap-1 text-xs text-pool-muted">
+      <span>{emoji}</span>
+      <span className="font-mono font-semibold text-pool-secondary">{count}</span>
+    </span>
+  );
 }
 
 export default function Season() {
@@ -56,57 +66,58 @@ export default function Season() {
         <LastUpdated timestamp={lastUpdated} onRefresh={refresh} loading={loading} />
       </div>
 
-      {/* Column headers */}
-      <div className="px-4 grid items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-pool-faint"
-           style={{ gridTemplateColumns: '2rem 1fr repeat(3, 2rem) 3.5rem 3.5rem 3rem' }}>
-        <span />
-        <span>Team</span>
-        <span className="text-center">🥇</span>
-        <span className="text-center">🥈</span>
-        <span className="text-center">🥉</span>
-        <span className="text-right">Avg Score</span>
-        <span className="text-right">Avg Finish</span>
-        <span className="text-right">Played</span>
-      </div>
-
       <div className="bg-pool-elevated rounded-xl border border-pool-rim divide-y divide-pool-rim">
         {teams.map((team) => {
           const avg = team.avgScore;
-          const avgDisplay = avg == null ? '—' : avg === 0 ? 'E' : avg > 0 ? `+${avg}` : String(avg);
+          const avgDisplay = avg == null ? null : avg === 0 ? 'E' : avg > 0 ? `+${avg}` : String(avg);
           const avgColor = avg == null ? 'text-pool-faint' : avg < 0 ? 'text-pool-under' : avg > 0 ? 'text-pool-over' : 'text-pool-even';
+          const isLeader = team.rank === 1;
+          const hasMedals = team.finishes[1] || team.finishes[2] || team.finishes[3];
+
           return (
-          <Link
-            key={team.team_id}
-            to={`/season/team/${team.team_id}`}
-            className="grid items-center gap-2 px-4 py-3.5 hover:bg-pool-surface transition-colors"
-            style={{ gridTemplateColumns: '2rem 1fr repeat(3, 2rem) 3.5rem 3.5rem 3rem' }}
-          >
-            <RankBadge rank={team.rank} />
+            <Link
+              key={team.team_id}
+              to={`/season/team/${team.team_id}`}
+              className="flex items-center gap-3 px-4 py-4 hover:bg-pool-surface transition-colors"
+            >
+              <RankBadge rank={team.rank} />
 
-            <span className={`font-semibold text-sm truncate ${team.rank === 1 ? 'text-pool-gold' : 'text-pool-primary'}`}>
-              {team.team_name}
-            </span>
+              {/* Name + stats block */}
+              <div className="flex-1 min-w-0 space-y-1.5">
+                {/* Row 1: team name + avg score */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`font-semibold text-base leading-tight ${isLeader ? 'text-pool-gold' : 'text-pool-primary'}`}>
+                    {team.team_name}
+                  </span>
+                  {avgDisplay && (
+                    <span className={`font-mono font-bold text-base flex-shrink-0 ${avgColor}`}>
+                      {avgDisplay}
+                    </span>
+                  )}
+                </div>
 
-            <span className="text-center text-sm font-mono font-bold text-pool-gold">
-              {team.finishes[1] || '—'}
-            </span>
-            <span className="text-center text-sm font-mono text-pool-secondary">
-              {team.finishes[2] || '—'}
-            </span>
-            <span className="text-center text-sm font-mono text-pool-muted">
-              {team.finishes[3] || '—'}
-            </span>
+                {/* Row 2: medals + avg finish */}
+                <div className="flex items-center gap-3">
+                  {hasMedals ? (
+                    <>
+                      <Medal emoji="🥇" count={team.finishes[1]} />
+                      <Medal emoji="🥈" count={team.finishes[2]} />
+                      <Medal emoji="🥉" count={team.finishes[3]} />
+                    </>
+                  ) : (
+                    <span className="text-xs text-pool-faint">No podium finishes</span>
+                  )}
+                  {team.avgFinish != null && (
+                    <span className="ml-auto text-xs text-pool-faint">
+                      Avg finish <span className="font-mono text-pool-muted font-medium">{team.avgFinish}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
 
-            <span className={`text-right text-sm font-mono font-medium ${avgColor}`}>
-              {avgDisplay}
-            </span>
-            <span className="text-right text-sm font-mono text-pool-muted">
-              {team.avgFinish != null ? team.avgFinish : '—'}
-            </span>
-            <span className="text-right text-sm text-pool-faint">
-              {team.played}
-            </span>
-          </Link>
+              {/* Chevron */}
+              <span className="text-pool-faint text-xs flex-shrink-0">›</span>
+            </Link>
           );
         })}
       </div>
