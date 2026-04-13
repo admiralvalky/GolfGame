@@ -102,6 +102,25 @@ export default function TeamSeasonStats() {
         <StatCard label="Avg Score" value={avgScoreDisplay} />
       </div>
 
+      {/* Most Picked Player */}
+      {team.mostPickedPlayers?.length > 0 && (
+        <div className="bg-pool-elevated border border-pool-rim rounded-xl p-4">
+          <p className="text-[10px] uppercase tracking-wide text-pool-faint font-semibold mb-2">
+            Most Picked Player{team.mostPickedPlayers.length > 1 ? 's' : ''}
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {team.mostPickedPlayers.map((p) => (
+              <span key={p.name} className="text-sm font-medium text-pool-primary">
+                {p.name}
+                <span className="ml-1.5 text-xs text-pool-muted font-normal">
+                  {p.count}×
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tournament history */}
       {history.length === 0 ? (
         <div className="text-center py-10">

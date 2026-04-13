@@ -78,6 +78,20 @@ export default async function handler(req, res) {
     tournamentResults.push({ tournament, scores, finishRanks });
   }
 
+  // Aggregate all picks across all tournaments to find most-picked players per team
+  const { data: allPicks } = await supabase
+    .from('picks')
+    .select('team_id, player_espn_id, player_name');
+
+  const pickCountsByTeam = {};
+  for (const pick of allPicks ?? []) {
+    if (!pickCountsByTeam[pick.team_id]) pickCountsByTeam[pick.team_id] = {};
+    const counts = pickCountsByTeam[pick.team_id];
+    const key = pick.player_espn_id;
+    if (!counts[key]) counts[key] = { name: pick.player_name, count: 0 };
+    counts[key].count++;
+  }
+
   // Build per-team season stats
   const seasonTotals = allTeams.map((team) => {
     const byTournament = {};
@@ -103,6 +117,18 @@ export default async function handler(req, res) {
       }
     }
 
+    // Most-picked player(s) for this team
+    const counts = pickCountsByTeam[team.id] ?? {};
+    const entries = Object.values(counts);
+    let mostPickedPlayers = [];
+    if (entries.length > 0) {
+      const max = Math.max(...entries.map((e) => e.count));
+      mostPickedPlayers = entries
+        .filter((e) => e.count === max)
+        .map((e) => ({ name: e.name, count: max }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
     return {
       team_id: team.id,
       team_name: team.name,
@@ -113,6 +139,7 @@ export default async function handler(req, res) {
       avgScore: played > 0 ? Math.round((scoreSum / played) * 10) / 10 : null,
       total: played > 0 ? scoreSum : null,
       played,
+      mostPickedPlayers,
     };
   });
 
