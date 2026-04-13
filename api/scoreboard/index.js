@@ -86,10 +86,10 @@ export default async function handler(req, res) {
     return a.team_name.localeCompare(b.team_name);
   });
 
-  let rank = 1;
+  // Assign ranks sequentially — the sort above already resolves all ties via
+  // tiebreaker, so every position in the sorted array gets its own unique rank.
   for (let i = 0; i < results.length; i++) {
-    if (i > 0 && results[i].total !== results[i - 1].total) rank = i + 1;
-    results[i].rank = rank;
+    results[i].rank = i + 1;
   }
 
   res.json({
