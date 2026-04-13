@@ -82,7 +82,7 @@ export default function TeamSeasonStats() {
     <div className="space-y-6">
       {/* Back nav */}
       <Link to="/season" className="inline-flex items-center gap-1 text-sm text-pool-muted hover:text-pool-primary transition-colors">
-        ← Season
+        ← Records
       </Link>
 
       {/* Header */}

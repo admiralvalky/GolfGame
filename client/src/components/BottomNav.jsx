@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 
 const TABS = [
   { to: '/',       icon: '🏆', label: 'Scores'  },
-  { to: '/season', icon: '📊', label: 'Season'  },
+  { to: '/season', icon: '📊', label: 'Records' },
   { to: '/setup',  icon: '⚙️', label: 'Setup'   },
 ];
 

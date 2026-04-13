@@ -14,6 +14,13 @@ import {
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 2024 }, (_, i) => 2025 + i);
 
+function tournamentDisplayName(t) {
+  if (!t) return '—';
+  const year = t.start_date ? new Date(t.start_date).getFullYear() : null;
+  const suffix = year ? ` '${String(year).slice(2)}` : '';
+  return `${t.name}${suffix}`;
+}
+
 export default function Setup() {
   const [teams, setTeams] = useState([]);
   const [newTeamName, setNewTeamName] = useState('');
@@ -260,7 +267,7 @@ export default function Setup() {
             <ul className="divide-y divide-pool-rim">
               {savedTournaments.map((t) => (
                 <li key={t.id} className="py-3 space-y-1.5">
-                  <span className="block text-sm font-medium text-pool-primary leading-snug">{t.name}</span>
+                  <span className="block text-sm font-medium text-pool-primary leading-snug">{tournamentDisplayName(t)}</span>
                   <div className="flex items-center gap-3">
                     <span
                       className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${
