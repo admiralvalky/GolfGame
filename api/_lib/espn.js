@@ -84,7 +84,9 @@ export async function fetchRoundsFromCoreApi(espnTournamentId, playerIds) {
           const lsJson = await lsRes.json();
           const rounds = {};
           for (const ls of lsJson.items ?? []) {
-            if (ls.period && ls.displayValue != null) {
+            // Same guard as the scoreboard path: ignore pre-created empty future-round
+            // entries that ESPN adds for all players (including cut) with 0 hole data.
+            if (ls.period && ls.displayValue != null && (ls.linescores ?? []).length > 0) {
               rounds[ls.period] = ls.displayValue.trim();
             }
           }
@@ -94,6 +96,131 @@ export async function fetchRoundsFromCoreApi(espnTournamentId, playerIds) {
     );
   }
   return roundsMap;
+}
+
+// Fetches the full competitor list for a (historical) tournament from the Core API,
+// including player names and scores. Used when the Site API scoreboard returns the
+// wrong event (it substitutes the currently active tournament for expired event IDs).
+export async function fetchCompetitorsFromCoreApi(espnTournamentId) {
+  const baseUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${espnTournamentId}/competitions/${espnTournamentId}`;
+
+  // One request returns all ~156 competitors with id + order.
+  const listRes = await fetch(`${baseUrl}/competitors?limit=300&lang=en&region=us`, { headers: { 'User-Agent': UA } });
+  if (!listRes.ok) throw new Error(`Core API competitor list: ${listRes.status}`);
+  const items = (await listRes.json()).items ?? [];
+
+  // Batch-fetch athlete names + linescores in parallel per player.
+  const rawData = new Map();
+  const BATCH = 20;
+  for (let i = 0; i < items.length; i += BATCH) {
+    const batch = items.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (item) => {
+      try {
+        const [athlete, lsJson] = await Promise.all([
+          fetch(`https://sports.core.api.espn.com/v2/sports/golf/athletes/${item.id}?lang=en&region=us`, { headers: { 'User-Agent': UA } })
+            .then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(`${baseUrl}/competitors/${item.id}/linescores?lang=en&region=us`, { headers: { 'User-Agent': UA } })
+            .then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+        const rounds = {};
+        for (const ls of lsJson?.items ?? []) {
+          if (ls.period && ls.displayValue != null && (ls.linescores ?? []).length > 0) {
+            rounds[ls.period] = ls.displayValue.trim();
+          }
+        }
+        rawData.set(String(item.id), {
+          order: item.order ?? 999,
+          name: athlete?.displayName ?? athlete?.fullName ?? 'Unknown',
+          rounds,
+        });
+      } catch (_) { /* skip individual player failures */ }
+    }));
+  }
+
+  // Determine max round (for CUT detection).
+  let maxRound = 0;
+  for (const { rounds } of rawData.values()) {
+    const keys = Object.keys(rounds).map(Number).filter(n => !isNaN(n));
+    if (keys.length > 0) maxRound = Math.max(maxRound, ...keys);
+  }
+
+  // Build competitor list with derived score/status.
+  const competitors = [];
+  for (const [id, { order, name, rounds }] of rawData) {
+    const roundCount = Object.keys(rounds).length;
+    const roundNums = Object.values(rounds).map(s => {
+      const t = String(s).trim().toUpperCase();
+      return t === 'E' ? 0 : parseInt(t, 10);
+    }).filter(n => !isNaN(n));
+    const totalNum = roundNums.length > 0 ? roundNums.reduce((a, b) => a + b, 0) : null;
+    const totalStr = totalNum == null ? 'E' : totalNum === 0 ? 'E' : totalNum > 0 ? `+${totalNum}` : String(totalNum);
+
+    let score;
+    if (maxRound >= 3 && roundCount <= 2) score = 'CUT';
+    else if (maxRound >= 4 && roundCount === 3) score = 'MDF';
+    else score = totalStr;
+
+    competitors.push({ id, name, score, order });
+  }
+  return competitors;
+}
+
+function computeRanks(scoreMap) {
+  const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF']);
+  const active = [];
+  const cutPlayers = [];
+  for (const [id, data] of scoreMap) {
+    const s = String(data.totalScore ?? '').toUpperCase();
+    const n = s === 'E' ? 0 : parseInt(s, 10);
+    if (!CUT_STATUSES.has(data.overallStatus)) {
+      if (!isNaN(n)) active.push({ id, score: n });
+    } else {
+      if (!isNaN(n)) cutPlayers.push({ id, score: n });
+    }
+  }
+  active.sort((a, b) => a.score - b.score);
+  for (let i = 0; i < active.length; ) {
+    let j = i;
+    while (j < active.length && active[j].score === active[i].score) j++;
+    const display = j - i > 1 ? `T${i + 1}` : String(i + 1);
+    for (let k = i; k < j; k++) scoreMap.get(active[k].id).rank = display;
+    i = j;
+  }
+  const cutStartOffset = active.length;
+  cutPlayers.sort((a, b) => a.score - b.score);
+  for (let i = 0; i < cutPlayers.length; ) {
+    let j = i;
+    while (j < cutPlayers.length && cutPlayers[j].score === cutPlayers[i].score) j++;
+    const rankNum = cutStartOffset + i + 1;
+    const display = j - i > 1 ? `T${rankNum}` : String(rankNum);
+    for (let k = i; k < j; k++) scoreMap.get(cutPlayers[k].id).rank = display;
+    i = j;
+  }
+}
+
+async function persistScoreCache(supabase, espnTournamentId, scoreMap) {
+  try {
+    const now = new Date().toISOString();
+    const rows = [...scoreMap]
+      .filter(([, data]) => Object.keys(data.rounds ?? {}).length > 0)
+      .map(([playerId, data]) => ({
+        espn_tournament_id: espnTournamentId,
+        player_espn_id: playerId,
+        rounds_json: data.rounds,
+        thru: data.thru != null ? String(data.thru) : null,
+        overall_status: data.overallStatus ?? null,
+        total_score: data.totalScore ?? null,
+        rank: data.rank ?? null,
+        saved_at: now,
+      }));
+    if (rows.length > 0) {
+      await supabase
+        .from('cached_player_scores')
+        .upsert(rows, { onConflict: 'espn_tournament_id,player_espn_id' });
+    }
+  } catch (err) {
+    console.error('Failed to cache scores to DB:', err.message);
+  }
 }
 
 function buildScoreMapFromCache(rows) {
@@ -134,17 +261,26 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     if (res.ok) {
       const json = await res.json();
       competitors = json.events?.[0]?.competitions?.[0]?.competitors ?? [];
-      const comp = json.events?.[0]?.competitions?.[0];
-      venue = {
-        course: comp?.venue?.fullName ?? null,
-        par: comp?.course?.par ?? comp?.situation?.par ?? null,
-      };
+      // Validate that ESPN returned the correct event. The scoreboard endpoint silently
+      // substitutes the currently active tournament when given a historical/expired event
+      // ID — do not cache or use data from the wrong event.
+      const returnedEventId = String(json.events?.[0]?.id ?? '');
+      if (returnedEventId && returnedEventId !== String(espnTournamentId)) {
+        console.warn(`ESPN scoreboard returned event ${returnedEventId}, not ${espnTournamentId} — ignoring (wrong event substitution)`);
+        competitors = [];
+      } else {
+        const comp = json.events?.[0]?.competitions?.[0];
+        venue = {
+          course: comp?.venue?.fullName ?? null,
+          par: comp?.course?.par ?? comp?.situation?.par ?? null,
+        };
+      }
     }
   } catch (err) {
     console.error(`ESPN fetch failed for ${espnTournamentId}:`, err.message);
   }
 
-  // If ESPN returned no data, fall back to DB cache
+  // If ESPN returned no data (or wrong event), fall back to DB cache then Core API.
   if (competitors.length === 0) {
     const { data: rows } = await supabase
       .from('cached_player_scores')
@@ -155,6 +291,40 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
       console.log(`Using DB-cached scores for ESPN tournament ${espnTournamentId}`);
       return { scoreMap: buildScoreMapFromCache(rows), venue };
     }
+
+    // Last resort: Core API retains historical data indefinitely.
+    console.warn(`No scoreboard data for ${espnTournamentId}, attempting Core API fallback`);
+    try {
+      const coreRounds = await fetchRoundsFromCoreApi(espnTournamentId, []);
+      if (coreRounds.size > 0) {
+        let coreMaxRound = 0;
+        for (const rounds of coreRounds.values()) {
+          const keys = Object.keys(rounds).map(Number).filter(n => !isNaN(n));
+          if (keys.length > 0) coreMaxRound = Math.max(coreMaxRound, ...keys);
+        }
+        const scoreMap = new Map();
+        for (const [id, rounds] of coreRounds) {
+          const roundNums = Object.values(rounds).map(s => {
+            const t = String(s).trim().toUpperCase();
+            return t === 'E' ? 0 : parseInt(t, 10);
+          }).filter(n => !isNaN(n));
+          const totalNum = roundNums.length > 0 ? roundNums.reduce((a, b) => a + b, 0) : null;
+          const totalScore = totalNum == null ? '' : totalNum === 0 ? 'E' : totalNum > 0 ? `+${totalNum}` : String(totalNum);
+          const playerRoundCount = Object.keys(rounds).length;
+          let overallStatus;
+          if (coreMaxRound >= 3 && playerRoundCount <= 2) overallStatus = 'CUT';
+          else if (coreMaxRound >= 4 && playerRoundCount === 3) overallStatus = 'MDF';
+          else overallStatus = totalScore || 'E';
+          scoreMap.set(id, { rounds, thru: 'F', overallStatus, totalScore });
+        }
+        computeRanks(scoreMap);
+        await persistScoreCache(supabase, espnTournamentId, scoreMap);
+        return { scoreMap, venue };
+      }
+    } catch (coreErr) {
+      console.error(`Core API fallback failed for ${espnTournamentId}:`, coreErr.message);
+    }
+
     throw new Error(`No score data available for ESPN tournament ${espnTournamentId}`);
   }
 
@@ -218,62 +388,11 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
   }
 
   // Third pass: compute display ranks
-  const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF']);
-  const active = [];
-  const cutPlayers = [];
-  for (const [id, data] of scoreMap) {
-    const s = data.totalScore.toUpperCase();
-    const n = s === 'E' ? 0 : parseInt(s, 10);
-    if (!CUT_STATUSES.has(data.overallStatus)) {
-      if (!isNaN(n)) active.push({ id, score: n });
-    } else {
-      if (!isNaN(n)) cutPlayers.push({ id, score: n });
-    }
-  }
-  active.sort((a, b) => a.score - b.score);
-  for (let i = 0; i < active.length; ) {
-    let j = i;
-    while (j < active.length && active[j].score === active[i].score) j++;
-    const display = j - i > 1 ? `T${i + 1}` : String(i + 1);
-    for (let k = i; k < j; k++) scoreMap.get(active[k].id).rank = display;
-    i = j;
-  }
-  // Rank cut/WD/DQ players separately, numbered after all active players.
-  const cutStartOffset = active.length;
-  cutPlayers.sort((a, b) => a.score - b.score);
-  for (let i = 0; i < cutPlayers.length; ) {
-    let j = i;
-    while (j < cutPlayers.length && cutPlayers[j].score === cutPlayers[i].score) j++;
-    const rankNum = cutStartOffset + i + 1;
-    const display = j - i > 1 ? `T${rankNum}` : String(rankNum);
-    for (let k = i; k < j; k++) scoreMap.get(cutPlayers[k].id).rank = display;
-    i = j;
-  }
+  computeRanks(scoreMap);
 
   // Persist to Supabase — only rows with actual round data so we never
   // overwrite good historical scores with empty ESPN responses.
-  try {
-    const now = new Date().toISOString();
-    const rows = [...scoreMap]
-      .filter(([, data]) => Object.keys(data.rounds ?? {}).length > 0)
-      .map(([playerId, data]) => ({
-        espn_tournament_id: espnTournamentId,
-        player_espn_id: playerId,
-        rounds_json: data.rounds,
-        thru: data.thru != null ? String(data.thru) : null,
-        overall_status: data.overallStatus ?? null,
-        total_score: data.totalScore ?? null,
-        rank: data.rank ?? null,
-        saved_at: now,
-      }));
-    if (rows.length > 0) {
-      await supabase
-        .from('cached_player_scores')
-        .upsert(rows, { onConflict: 'espn_tournament_id,player_espn_id' });
-    }
-  } catch (err) {
-    console.error('Failed to cache scores to DB:', err.message);
-  }
+  await persistScoreCache(supabase, espnTournamentId, scoreMap);
 
   return { scoreMap, venue };
 }

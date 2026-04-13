@@ -1,4 +1,4 @@
-import { espnFetch } from '../_lib/espn.js';
+import { espnFetch, fetchCompetitorsFromCoreApi } from '../_lib/espn.js';
 
 const UA = 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)';
 
@@ -73,16 +73,37 @@ export default async function handler(req, res) {
     if (route === 'players') {
       const id = req.query.id;
       if (!id) return res.status(400).json({ error: 'id query parameter required' });
-      const data = await espnFetch(
-        `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${id}`
-      );
-      const competitors = data.events?.[0]?.competitions?.[0]?.competitors ?? [];
-      const players = competitors.map((c) => ({
-        id: c.id,
-        name: c.athlete?.displayName ?? 'Unknown',
-        score: String(c.score ?? 'E'),
-        order: c.order ?? 999,
-      }));
+
+      let players = null;
+
+      // Try the Site API scoreboard first — it's fast and works for live/recent events.
+      try {
+        const data = await espnFetch(
+          `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${id}`
+        );
+        const competitors = data.events?.[0]?.competitions?.[0]?.competitors ?? [];
+        // Validate the returned event ID — the scoreboard silently substitutes the
+        // currently active tournament when given an expired historical event ID.
+        const returnedId = String(data.events?.[0]?.id ?? '');
+        if (competitors.length > 0 && (!returnedId || returnedId === String(id))) {
+          players = competitors.map((c) => ({
+            id: c.id,
+            name: c.athlete?.displayName ?? 'Unknown',
+            score: String(c.score ?? 'E'),
+            order: c.order ?? 999,
+          }));
+        } else if (returnedId && returnedId !== String(id)) {
+          console.warn(`ESPN scoreboard returned event ${returnedId} for requested ${id} — falling back to Core API`);
+        }
+      } catch (err) {
+        console.warn(`ESPN scoreboard unavailable for ${id}: ${err.message}`);
+      }
+
+      // Fall back to Core API for historical/completed tournaments.
+      if (!players) {
+        players = await fetchCompetitorsFromCoreApi(id);
+      }
+
       players.sort((a, b) => a.order - b.order);
       return res.json({ players, tournamentId: id });
     }
