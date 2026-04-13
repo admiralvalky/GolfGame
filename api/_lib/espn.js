@@ -239,6 +239,10 @@ function buildScoreMapFromCache(rows) {
 
 export async function fetchPlayerScores(supabase, espnTournamentId, status = '') {
   // Completed tournaments: serve from cache — ESPN clears linescores after events end.
+  // skipCache is set to true when the post-tournament cache is found but stale so the
+  // second cache lookup in the competitors===0 branch doesn't re-serve the same bad data.
+  let skipCache = false;
+
   if (status === 'post') {
     const { data: cached } = await supabase
       .from('cached_player_scores')
@@ -257,7 +261,7 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
         return { scoreMap: buildScoreMapFromCache(cached), venue: { course: null, par: null } };
       }
       console.warn(`Post-tournament cache for ${espnTournamentId} has no R3/R4 data — stale or wrong event, refreshing`);
-      // Fall through to re-fetch; persistScoreCache will overwrite the stale rows.
+      skipCache = true; // prevent the fallback path from re-serving this same stale data
     } else {
       console.warn(`No cache for completed tournament ${espnTournamentId}, falling back to ESPN`);
     }
@@ -292,14 +296,16 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
 
   // If ESPN returned no data (or wrong event), fall back to DB cache then Core API.
   if (competitors.length === 0) {
-    const { data: rows } = await supabase
-      .from('cached_player_scores')
-      .select('*')
-      .eq('espn_tournament_id', espnTournamentId);
+    if (!skipCache) {
+      const { data: rows } = await supabase
+        .from('cached_player_scores')
+        .select('*')
+        .eq('espn_tournament_id', espnTournamentId);
 
-    if (rows && rows.length > 0) {
-      console.log(`Using DB-cached scores for ESPN tournament ${espnTournamentId}`);
-      return { scoreMap: buildScoreMapFromCache(rows), venue };
+      if (rows && rows.length > 0) {
+        console.log(`Using DB-cached scores for ESPN tournament ${espnTournamentId}`);
+        return { scoreMap: buildScoreMapFromCache(rows), venue };
+      }
     }
 
     // Last resort: Core API retains historical data indefinitely.
