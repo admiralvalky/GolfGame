@@ -12,7 +12,7 @@ import {
 } from '../api.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: CURRENT_YEAR - 2024 }, (_, i) => 2025 + i);
+const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
 
 function tournamentDisplayName(t) {
   if (!t) return '—';
