@@ -58,23 +58,28 @@ export default function Season() {
 
       {/* Column headers */}
       <div className="px-4 grid items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-pool-faint"
-           style={{ gridTemplateColumns: '2rem 1fr repeat(3, 2rem) 3.5rem 3rem' }}>
+           style={{ gridTemplateColumns: '2rem 1fr repeat(3, 2rem) 3.5rem 3.5rem 3rem' }}>
         <span />
         <span>Team</span>
         <span className="text-center">🥇</span>
         <span className="text-center">🥈</span>
         <span className="text-center">🥉</span>
-        <span className="text-right">Avg</span>
+        <span className="text-right">Avg Score</span>
+        <span className="text-right">Avg Finish</span>
         <span className="text-right">Played</span>
       </div>
 
       <div className="bg-pool-elevated rounded-xl border border-pool-rim divide-y divide-pool-rim">
-        {teams.map((team) => (
+        {teams.map((team) => {
+          const avg = team.avgScore;
+          const avgDisplay = avg == null ? '—' : avg === 0 ? 'E' : avg > 0 ? `+${avg}` : String(avg);
+          const avgColor = avg == null ? 'text-pool-faint' : avg < 0 ? 'text-pool-under' : avg > 0 ? 'text-pool-over' : 'text-pool-even';
+          return (
           <Link
             key={team.team_id}
             to={`/season/team/${team.team_id}`}
             className="grid items-center gap-2 px-4 py-3.5 hover:bg-pool-surface transition-colors"
-            style={{ gridTemplateColumns: '2rem 1fr repeat(3, 2rem) 3.5rem 3rem' }}
+            style={{ gridTemplateColumns: '2rem 1fr repeat(3, 2rem) 3.5rem 3.5rem 3rem' }}
           >
             <RankBadge rank={team.rank} />
 
@@ -92,6 +97,9 @@ export default function Season() {
               {team.finishes[3] || '—'}
             </span>
 
+            <span className={`text-right text-sm font-mono font-medium ${avgColor}`}>
+              {avgDisplay}
+            </span>
             <span className="text-right text-sm font-mono text-pool-muted">
               {team.avgFinish != null ? team.avgFinish : '—'}
             </span>
@@ -99,7 +107,8 @@ export default function Season() {
               {team.played}
             </span>
           </Link>
-        ))}
+          );
+        })}
       </div>
 
       <p className="text-xs text-pool-faint text-center">
