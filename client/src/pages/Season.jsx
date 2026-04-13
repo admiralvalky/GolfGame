@@ -70,8 +70,7 @@ export default function Season() {
         {teams.map((team) => {
           const avg = team.avgScore;
           const avgDisplay = avg == null ? null : avg === 0 ? 'E' : avg > 0 ? `+${avg}` : String(avg);
-          const avgColor = avg == null ? 'text-pool-faint' : avg < 0 ? 'text-pool-under' : avg > 0 ? 'text-pool-over' : 'text-pool-even';
-          const isLeader = team.rank === 1;
+const isLeader = team.rank === 1;
           const hasMedals = team.finishes[1] || team.finishes[2] || team.finishes[3];
 
           return (
@@ -84,19 +83,12 @@ export default function Season() {
 
               {/* Name + stats block */}
               <div className="flex-1 min-w-0 space-y-1.5">
-                {/* Row 1: team name + avg score */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`font-semibold text-base leading-tight ${isLeader ? 'text-pool-gold' : 'text-pool-primary'}`}>
-                    {team.team_name}
-                  </span>
-                  {avgDisplay && (
-                    <span className={`font-mono font-bold text-base flex-shrink-0 ${avgColor}`}>
-                      {avgDisplay}
-                    </span>
-                  )}
-                </div>
+                {/* Row 1: team name */}
+                <span className={`font-semibold text-base leading-tight ${isLeader ? 'text-pool-gold' : 'text-pool-primary'}`}>
+                  {team.team_name}
+                </span>
 
-                {/* Row 2: medals + avg finish */}
+                {/* Row 2: medals + avg stats */}
                 <div className="flex items-center gap-3">
                   {hasMedals ? (
                     <>
@@ -107,11 +99,18 @@ export default function Season() {
                   ) : (
                     <span className="text-xs text-pool-faint">No podium finishes</span>
                   )}
-                  {team.avgFinish != null && (
-                    <span className="ml-auto text-xs text-pool-faint">
-                      Avg finish <span className="font-mono text-pool-muted font-medium">{team.avgFinish}</span>
-                    </span>
-                  )}
+                  <div className="ml-auto flex flex-col items-end gap-0.5">
+                    {avgDisplay && (
+                      <span className="text-xs text-pool-faint">
+                        Avg score <span className="font-mono text-pool-muted font-medium">{avgDisplay}</span>
+                      </span>
+                    )}
+                    {team.avgFinish != null && (
+                      <span className="text-xs text-pool-faint">
+                        Avg finish <span className="font-mono text-pool-muted font-medium">{team.avgFinish}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
