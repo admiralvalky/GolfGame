@@ -30,7 +30,7 @@ export default function AdminTokenControl() {
           type="password"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Required for saving changes"
+          placeholder="Only needed if configured"
           className="w-full bg-pool-surface border border-pool-rim text-pool-primary placeholder:text-pool-faint rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under"
         />
       </div>

@@ -73,6 +73,35 @@ export default async function handler(req, res) {
     p_players: normalizedPlayers,
   });
 
-  if (error) return res.status(500).json({ error: error.message });
-  res.status(201).json({ picks: saved });
+  if (!error) return res.status(201).json({ picks: saved });
+
+  const isMissingRpc =
+    error.code === 'PGRST202' ||
+    error.message?.includes('replace_team_picks') ||
+    error.message?.includes('Could not find the function');
+  if (!isMissingRpc) return res.status(500).json({ error: error.message });
+
+  console.warn('replace_team_picks RPC is missing; using non-transactional fallback. Run supabase-schema.sql to enable atomic pick saves.');
+
+  const { error: deleteError } = await supabase
+    .from('picks')
+    .delete()
+    .eq('team_id', team_id)
+    .eq('tournament_id', tournament_id);
+  if (deleteError) return res.status(500).json({ error: deleteError.message });
+
+  const rows = normalizedPlayers.map((p) => ({
+    team_id,
+    tournament_id,
+    player_espn_id: p.player_espn_id,
+    player_name: p.player_name,
+  }));
+
+  const { data: fallbackSaved, error: insertError } = await supabase
+    .from('picks')
+    .insert(rows)
+    .select();
+
+  if (insertError) return res.status(500).json({ error: insertError.message });
+  return res.status(201).json({ picks: fallbackSaved });
 }
