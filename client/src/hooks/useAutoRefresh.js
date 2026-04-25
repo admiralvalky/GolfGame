@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Polls a fetch function every `intervalMs` milliseconds.
@@ -9,17 +9,21 @@ export function useAutoRefresh(fetchFn, intervalMs = 10 * 60 * 1000) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const requestIdRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     try {
       const result = await fetchFn();
+      if (requestId !== requestIdRef.current) return;
       setData(result);
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
-      setError(err.message ?? 'Failed to fetch data');
+      if (requestId !== requestIdRef.current) return;
+      setError(err.response?.data?.error ?? err.message ?? 'Failed to fetch data');
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [fetchFn]);
 

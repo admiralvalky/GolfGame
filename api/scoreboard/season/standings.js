@@ -1,6 +1,30 @@
 import supabase from '../../_lib/supabase.js';
 import { fetchPlayerScores } from '../../_lib/espn.js';
 import { computeTeamScoreByRound } from '../../_lib/scoring.js';
+import { withEffectiveStatus } from '../../_lib/tournamentStatus.js';
+
+function pickSignature(picks) {
+  return picks
+    .map((p) => String(p.player_espn_id))
+    .sort()
+    .join('|');
+}
+
+function rankScores(scores) {
+  const finishRanks = {};
+  const ranked = Object.entries(scores)
+    .filter(([, s]) => s !== null && s !== undefined)
+    .sort(([, a], [, b]) => a - b);
+  let r = 1;
+  for (let i = 0; i < ranked.length; ) {
+    let j = i;
+    while (j < ranked.length && ranked[j][1] === ranked[i][1]) j++;
+    for (let k = i; k < j; k++) finishRanks[ranked[k][0]] = r;
+    r = j + 1;
+    i = j;
+  }
+  return finishRanks;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -21,24 +45,81 @@ export default async function handler(req, res) {
     return res.json({ teams: [], tournaments: [] });
   }
 
+  const { data: allPicks, error: picksError } = await supabase
+    .from('picks')
+    .select('*, teams!inner(id, name)');
+  if (picksError) return res.status(500).json({ error: picksError.message });
+
+  const { data: cachedRows, error: cachedError } = await supabase
+    .from('cached_team_scores')
+    .select('*');
+  if (cachedError) {
+    console.warn('Skipping cached team scores:', cachedError.message);
+  }
+
+  const picksByTournament = new Map();
+  const pickCountsByTeam = {};
+  for (const pick of allPicks ?? []) {
+    if (!picksByTournament.has(pick.tournament_id)) {
+      picksByTournament.set(pick.tournament_id, []);
+    }
+    picksByTournament.get(pick.tournament_id).push(pick);
+
+    if (!pickCountsByTeam[pick.team_id]) pickCountsByTeam[pick.team_id] = {};
+    const counts = pickCountsByTeam[pick.team_id];
+    const key = pick.player_espn_id;
+    if (!counts[key]) counts[key] = { name: pick.player_name, count: 0 };
+    counts[key].count++;
+  }
+
+  const cachedByTournament = new Map();
+  for (const row of cachedRows ?? []) {
+    if (!cachedByTournament.has(row.tournament_id)) {
+      cachedByTournament.set(row.tournament_id, []);
+    }
+    cachedByTournament.get(row.tournament_id).push(row);
+  }
+
   // Build per-tournament score maps
   const tournamentResults = [];
 
-  for (const tournament of tournaments ?? []) {
-    const { data: pickRows } = await supabase
-      .from('picks')
-      .select('team_id, teams!inner(id, name)')
-      .eq('tournament_id', tournament.id);
+  for (const rawTournament of tournaments ?? []) {
+    const tournament = withEffectiveStatus(rawTournament);
+    const pickRows = picksByTournament.get(tournament.id) ?? [];
 
     const teamsMap = new Map();
+    const picksByTeam = new Map();
     for (const row of pickRows ?? []) {
       if (!teamsMap.has(row.team_id)) {
         teamsMap.set(row.team_id, { id: row.teams.id, name: row.teams.name });
       }
+      if (!picksByTeam.has(row.team_id)) picksByTeam.set(row.team_id, []);
+      picksByTeam.get(row.team_id).push(row);
     }
     const teams = [...teamsMap.values()];
 
     if (teams.length === 0) continue;
+
+    if (tournament.status === 'post') {
+      const cached = cachedByTournament.get(tournament.id) ?? [];
+      const cachedByTeam = new Map(cached.map((row) => [row.team_id, row]));
+      const hasValidCache = teams.every((team) => {
+        const row = cachedByTeam.get(team.id);
+        return row && row.pick_signature === pickSignature(picksByTeam.get(team.id) ?? []);
+      });
+
+      if (hasValidCache) {
+        const scores = {};
+        const finishRanks = {};
+        for (const team of teams) {
+          const row = cachedByTeam.get(team.id);
+          scores[team.id] = row.total_score;
+          finishRanks[team.id] = row.finish_rank;
+        }
+        tournamentResults.push({ tournament, scores, finishRanks });
+        continue;
+      }
+    }
 
     let playerScores;
     try {
@@ -51,45 +132,34 @@ export default async function handler(req, res) {
 
     const scores = {};
     for (const team of teams) {
-      const { data: picks } = await supabase
-        .from('picks')
-        .select('*')
-        .eq('team_id', team.id)
-        .eq('tournament_id', tournament.id);
-
+      const picks = picksByTeam.get(team.id) ?? [];
       const { total } = computeTeamScoreByRound(picks ?? [], playerScores);
       scores[team.id] = total;
     }
 
-    // Rank teams within this tournament (ties share rank, next rank skips)
-    const finishRanks = {};
-    const ranked = Object.entries(scores)
-      .filter(([, s]) => s !== null && s !== undefined)
-      .sort(([, a], [, b]) => a - b);
-    let r = 1;
-    for (let i = 0; i < ranked.length; ) {
-      let j = i;
-      while (j < ranked.length && ranked[j][1] === ranked[i][1]) j++;
-      for (let k = i; k < j; k++) finishRanks[ranked[k][0]] = r;
-      r = j + 1;
-      i = j;
+    const finishRanks = rankScores(scores);
+
+    if (tournament.status === 'post') {
+      const now = new Date().toISOString();
+      const cacheRows = teams.map((team) => ({
+        tournament_id: tournament.id,
+        team_id: team.id,
+        total_score: scores[team.id] ?? null,
+        finish_rank: finishRanks[team.id] ?? null,
+        pick_signature: pickSignature(picksByTeam.get(team.id) ?? []),
+        saved_at: now,
+      }));
+      if (cacheRows.length > 0) {
+        const { error: cacheWriteError } = await supabase
+          .from('cached_team_scores')
+          .upsert(cacheRows, { onConflict: 'tournament_id,team_id' });
+        if (cacheWriteError) {
+          console.warn(`Failed to cache team scores for tournament ${tournament.id}:`, cacheWriteError.message);
+        }
+      }
     }
 
     tournamentResults.push({ tournament, scores, finishRanks });
-  }
-
-  // Aggregate all picks across all tournaments to find most-picked players per team
-  const { data: allPicks } = await supabase
-    .from('picks')
-    .select('team_id, player_espn_id, player_name');
-
-  const pickCountsByTeam = {};
-  for (const pick of allPicks ?? []) {
-    if (!pickCountsByTeam[pick.team_id]) pickCountsByTeam[pick.team_id] = {};
-    const counts = pickCountsByTeam[pick.team_id];
-    const key = pick.player_espn_id;
-    if (!counts[key]) counts[key] = { name: pick.player_name, count: 0 };
-    counts[key].count++;
   }
 
   // Build per-team season stats

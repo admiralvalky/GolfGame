@@ -1,0 +1,100 @@
+<h2>How should navigation feel?</h2>
+<p class="subtitle">You're primarily on mobile. Where and how do you want to move between pages?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="bottom-nav" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a3a2a;padding:0;font-family:sans-serif;position:relative;min-height:160px;">
+      <!-- Phone frame simulation -->
+      <div style="padding:14px 14px 0;color:#6ee7b7;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700">SCOREBOARD</div>
+      <div style="padding:6px 14px 14px;color:#f0fdf4;font-size:18px;font-weight:700">The Masters 2025</div>
+      <div style="padding:0 14px;color:#9ca3af;font-size:11px">Live · Round 4</div>
+      <div style="height:40px"></div>
+      <!-- Bottom nav bar -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:#0a1a10;border-top:1px solid #2d5a3d;display:flex;padding:8px 0 4px;">
+        <div style="flex:1;text-align:center">
+          <div style="color:#9ca3af;font-size:18px">🏠</div>
+          <div style="color:#9ca3af;font-size:9px;margin-top:1px">Home</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div style="color:#4ade80;font-size:18px">🏆</div>
+          <div style="color:#4ade80;font-size:9px;margin-top:1px;font-weight:700">Scores</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div style="color:#9ca3af;font-size:18px">📊</div>
+          <div style="color:#9ca3af;font-size:9px;margin-top:1px">Season</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div style="color:#9ca3af;font-size:18px">⛳</div>
+          <div style="color:#9ca3af;font-size:9px;margin-top:1px">Picks</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div style="color:#9ca3af;font-size:18px">⚙️</div>
+          <div style="color:#9ca3af;font-size:9px;margin-top:1px">Setup</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Bottom Tab Bar</h3>
+      <p>Native mobile pattern — thumb-friendly, always visible. Active tab highlighted in green. Standard for sports apps (ESPN, PGA TOUR app).</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="top-nav" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a3a2a;padding:0;font-family:sans-serif;min-height:160px;">
+      <!-- Top header nav -->
+      <div style="background:#0a1a10;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #2d6a4f">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="color:#d4af37;font-size:16px">⛳</span>
+          <span style="color:#f0fdf4;font-size:13px;font-weight:700;letter-spacing:0.5px">GOLF POOL</span>
+        </div>
+        <div style="display:flex;gap:2px">
+          <span style="color:#9ca3af;background:#1a3a2a;font-size:10px;padding:4px 8px;border-radius:4px">Home</span>
+          <span style="color:#f0fdf4;background:#2d6a4f;font-size:10px;padding:4px 8px;border-radius:4px;font-weight:700">Scores</span>
+          <span style="color:#9ca3af;background:#1a3a2a;font-size:10px;padding:4px 8px;border-radius:4px">Season</span>
+          <span style="color:#9ca3af;background:#1a3a2a;font-size:10px;padding:4px 8px;border-radius:4px">Picks</span>
+        </div>
+      </div>
+      <div style="padding:14px">
+        <div style="color:#6ee7b7;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:4px">SCOREBOARD</div>
+        <div style="color:#f0fdf4;font-size:18px;font-weight:700">The Masters 2025</div>
+        <div style="color:#9ca3af;font-size:11px;margin-top:2px">Live · Round 4</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Top Header Bar</h3>
+      <p>Current pattern, refined. Logo + nav links across the top. Familiar web convention, more compact on small screens. Links can truncate on narrow phones.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hybrid-nav" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a3a2a;padding:0;font-family:sans-serif;position:relative;min-height:160px;">
+      <!-- Minimal top bar + bottom nav -->
+      <div style="background:#0a1a10;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2d5a3d">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:#d4af37;font-size:15px">⛳</span>
+          <span style="color:#f0fdf4;font-size:13px;font-weight:700;letter-spacing:0.5px">GOLF POOL</span>
+        </div>
+        <span style="color:#6ee7b7;font-size:11px;background:#1a3a2a;padding:3px 8px;border-radius:20px;border:1px solid #2d5a3d">🔴 Live</span>
+      </div>
+      <div style="padding:14px">
+        <div style="color:#6ee7b7;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:4px">SCOREBOARD</div>
+        <div style="color:#f0fdf4;font-size:18px;font-weight:700">The Masters 2025</div>
+      </div>
+      <div style="height:24px"></div>
+      <!-- Bottom nav -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:#0a1a10;border-top:1px solid #2d5a3d;display:flex;padding:6px 0 3px;">
+        <div style="flex:1;text-align:center"><div style="color:#9ca3af;font-size:16px">🏠</div><div style="color:#9ca3af;font-size:8px;margin-top:1px">Home</div></div>
+        <div style="flex:1;text-align:center"><div style="color:#4ade80;font-size:16px">🏆</div><div style="color:#4ade80;font-size:8px;margin-top:1px;font-weight:700">Scores</div></div>
+        <div style="flex:1;text-align:center"><div style="color:#9ca3af;font-size:16px">📊</div><div style="color:#9ca3af;font-size:8px;margin-top:1px">Season</div></div>
+        <div style="flex:1;text-align:center"><div style="color:#9ca3af;font-size:16px">⛳</div><div style="color:#9ca3af;font-size:8px;margin-top:1px">Picks</div></div>
+        <div style="flex:1;text-align:center"><div style="color:#9ca3af;font-size:16px">⚙️</div><div style="color:#9ca3af;font-size:8px;margin-top:1px">Setup</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Minimal Header + Bottom Nav</h3>
+      <p>Slim top bar (logo + live indicator only), full bottom tab bar for navigation. Maximum content space, best mobile ergonomics. My recommendation.</p>
+    </div>
+  </div>
+
+</div>

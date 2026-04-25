@@ -1,0 +1,8 @@
+{"type":"server-started","port":63673,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:63673","screen_dir":"/Users/matthewmyers/Desktop/ClaudeCode/GolfGame/.superpowers/brainstorm/80071-1774282489"}
+{"type":"screen-added","file":"/Users/matthewmyers/Desktop/ClaudeCode/GolfGame/.superpowers/brainstorm/80071-1774282489/overall-vibe.html"}
+{"type":"screen-added","file":"/Users/matthewmyers/Desktop/ClaudeCode/GolfGame/.superpowers/brainstorm/80071-1774282489/scoreboard-layout.html"}
+{"type":"screen-added","file":"/Users/matthewmyers/Desktop/ClaudeCode/GolfGame/.superpowers/brainstorm/80071-1774282489/expanded-player-view.html"}
+{"type":"screen-added","file":"/Users/matthewmyers/Desktop/ClaudeCode/GolfGame/.superpowers/brainstorm/80071-1774282489/navigation.html"}
+{"type":"screen-added","file":"/Users/matthewmyers/Desktop/ClaudeCode/GolfGame/.superpowers/brainstorm/80071-1774282489/home-page.html"}
+{"type":"screen-added","file":"/Users/matthewmyers/Desktop/ClaudeCode/GolfGame/.superpowers/brainstorm/80071-1774282489/waiting-1.html"}
+{"type":"server-stopped","reason":"idle timeout"}

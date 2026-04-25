@@ -1,0 +1,106 @@
+<h2>What should the Home page prioritize?</h2>
+<p class="subtitle">When you open the app, what's the first thing you want to see?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="tournament-hero" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a3a2a;padding:0;font-family:sans-serif;">
+      <!-- Big tournament hero -->
+      <div style="background:linear-gradient(160deg,#0a1a10 0%,#1a3a2a 50%,#2d6a4f 100%);padding:18px 16px 14px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <div style="color:#d4af37;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;margin-bottom:4px">NOW PLAYING</div>
+            <div style="color:#f0fdf4;font-size:20px;font-weight:800;line-height:1.2">The Masters</div>
+            <div style="color:#86efac;font-size:12px;margin-top:2px">Augusta · Live · Round 4</div>
+          </div>
+          <span style="background:#16a34a;color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:1px">● LIVE</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;flex:1;text-align:center">
+            <div style="color:#9ca3af;font-size:9px;text-transform:uppercase;letter-spacing:1px">Leader</div>
+            <div style="color:#f0fdf4;font-size:12px;font-weight:700;margin-top:2px">Matt's Team</div>
+            <div style="color:#4ade80;font-size:16px;font-weight:800">-42</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;flex:1;text-align:center">
+            <div style="color:#9ca3af;font-size:9px;text-transform:uppercase;letter-spacing:1px">Your Rank</div>
+            <div style="color:#f0fdf4;font-size:12px;font-weight:700;margin-top:2px">The Boys</div>
+            <div style="color:#d4af37;font-size:16px;font-weight:800">#2</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;flex:1;text-align:center">
+            <div style="color:#9ca3af;font-size:9px;text-transform:uppercase;letter-spacing:1px">Gap</div>
+            <div style="color:#f0fdf4;font-size:12px;font-weight:700;margin-top:2px">To Lead</div>
+            <div style="color:#f87171;font-size:16px;font-weight:800">-4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Tournament Hero</h3>
+      <p>Big hero card showing the active tournament, live status, leader, and quick stat tiles. Feels like opening ESPN — immediately in the action.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="leaderboard-preview" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a3a2a;padding:14px;font-family:sans-serif;">
+      <!-- Mini leaderboard preview on home -->
+      <div style="color:#6ee7b7;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">THE MASTERS · ROUND 4</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="background:#0d1f15;border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px;border-left:2px solid #d4af37">
+          <span style="color:#d4af37;font-size:14px;font-weight:800;width:16px">1</span>
+          <span style="color:#f0fdf4;font-size:12px;font-weight:600;flex:1">Matt's Team</span>
+          <span style="color:#4ade80;font-size:14px;font-weight:800">-42</span>
+        </div>
+        <div style="background:#0d1f15;border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px;border-left:2px solid rgba(255,255,255,0.15)">
+          <span style="color:#9ca3af;font-size:14px;font-weight:800;width:16px">2</span>
+          <span style="color:#f0fdf4;font-size:12px;font-weight:600;flex:1">The Boys</span>
+          <span style="color:#4ade80;font-size:14px;font-weight:800">-38</span>
+        </div>
+        <div style="background:#0d1f15;border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px;border-left:2px solid rgba(255,255,255,0.1)">
+          <span style="color:#cd7f32;font-size:14px;font-weight:800;width:16px">3</span>
+          <span style="color:#f0fdf4;font-size:12px;font-weight:600;flex:1">Weekend Warriors</span>
+          <span style="color:#4ade80;font-size:14px;font-weight:800">-31</span>
+        </div>
+      </div>
+      <div style="color:#4ade80;font-size:11px;text-align:center;margin-top:10px;font-weight:600">View full scoreboard →</div>
+    </div>
+    <div class="card-body">
+      <h3>Live Leaderboard Preview</h3>
+      <p>Home page IS the leaderboard — shows top 3-5 teams, "View full" link. No extra tap to see standings. Great if scores are what everyone checks first.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="dashboard" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a3a2a;padding:14px;font-family:sans-serif;">
+      <!-- Dashboard with tournament + season summary -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div style="background:#0d1f15;border-radius:8px;padding:10px;grid-column:1/-1">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="color:#d4af37;font-size:9px;letter-spacing:2px;text-transform:uppercase">LIVE NOW</div>
+              <div style="color:#f0fdf4;font-size:13px;font-weight:700;margin-top:2px">The Masters</div>
+            </div>
+            <div style="text-align:right">
+              <div style="color:#4ade80;font-size:18px;font-weight:800">-42</div>
+              <div style="color:#6ee7b7;font-size:9px">Leader</div>
+            </div>
+          </div>
+        </div>
+        <div style="background:#0d1f15;border-radius:8px;padding:10px">
+          <div style="color:#9ca3af;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Season</div>
+          <div style="color:#f0fdf4;font-size:16px;font-weight:800">#1</div>
+          <div style="color:#6ee7b7;font-size:10px">Matt's Team</div>
+        </div>
+        <div style="background:#0d1f15;border-radius:8px;padding:10px">
+          <div style="color:#9ca3af;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Events</div>
+          <div style="color:#f0fdf4;font-size:16px;font-weight:800">8</div>
+          <div style="color:#6ee7b7;font-size:10px">Played this year</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Dashboard</h3>
+      <p>Overview of everything — active tournament, season leader, events played. More informational, less focused. Good if people use the app between tournaments too.</p>
+    </div>
+  </div>
+
+</div>

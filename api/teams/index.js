@@ -1,6 +1,9 @@
 import supabase from '../_lib/supabase.js';
+import { requireAdmin } from '../_lib/auth.js';
 
 export default async function handler(req, res) {
+  if (!requireAdmin(req, res)) return;
+
   if (req.method === 'GET') {
     const { data: teams, error } = await supabase
       .from('teams')

@@ -10,6 +10,7 @@ import {
   saveTournament,
   deleteTournament,
 } from '../api.js';
+import AdminTokenControl from '../components/AdminTokenControl.jsx';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
@@ -144,6 +145,7 @@ export default function Setup() {
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-pool-primary">Setup</h1>
+      <AdminTokenControl />
 
       {/* Teams Section */}
       <section className="bg-pool-elevated rounded-xl border border-pool-rim p-6 space-y-4">

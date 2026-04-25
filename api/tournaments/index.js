@@ -1,41 +1,11 @@
 import supabase from '../_lib/supabase.js';
+import { requireAdmin } from '../_lib/auth.js';
 import { normalizeStatus } from '../_lib/espn.js';
-
-function clampStatusByDate(status, startDate, endDate) {
-  const now = new Date();
-  if (startDate && new Date(startDate) > now) return 'upcoming';
-  if (endDate && new Date(endDate) < now && status === 'upcoming') return 'post';
-  return status;
-}
-
-async function syncStatusFromEspn(tournament) {
-  try {
-    const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${tournament.espn_tournament_id}`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)' },
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    const rawStatus = data.events?.[0]?.status?.type?.name ?? null;
-    if (!rawStatus) return;
-    const normalized = clampStatusByDate(
-      normalizeStatus(rawStatus),
-      tournament.start_date,
-      tournament.end_date,
-    );
-    if (normalized !== tournament.status) {
-      await supabase
-        .from('tournaments')
-        .update({ status: normalized })
-        .eq('id', tournament.id);
-      tournament.status = normalized;
-    }
-  } catch (_) {
-    // Non-fatal
-  }
-}
+import { clampStatusByDate, withEffectiveStatus } from '../_lib/tournamentStatus.js';
 
 export default async function handler(req, res) {
+  if (!requireAdmin(req, res)) return;
+
   if (req.method === 'GET') {
     const { data: tournaments, error } = await supabase
       .from('tournaments')
@@ -43,24 +13,7 @@ export default async function handler(req, res) {
       .order('start_date', { ascending: false });
     if (error) return res.status(500).json({ error: error.message });
 
-    // Normalize and sync non-completed tournaments.
-    // Also re-sync 'post' tournaments whose start_date is in the future —
-    // ESPN sometimes returns STATUS_FINAL for upcoming events.
-    await Promise.all(
-      tournaments.map(async (t) => {
-        const normalized = clampStatusByDate(normalizeStatus(t.status), t.start_date, t.end_date);
-        if (normalized !== t.status) {
-          await supabase.from('tournaments').update({ status: normalized }).eq('id', t.id);
-          t.status = normalized;
-        }
-        const isFutureEvent = t.start_date && new Date(t.start_date) > new Date();
-        if (t.status !== 'post' || isFutureEvent) {
-          await syncStatusFromEspn(t);
-        }
-      })
-    );
-
-    return res.json({ tournaments });
+    return res.json({ tournaments: tournaments.map(withEffectiveStatus) });
   }
 
   if (req.method === 'POST') {

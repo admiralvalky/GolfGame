@@ -1,6 +1,7 @@
 import supabase from '../_lib/supabase.js';
 import { fetchPlayerScores } from '../_lib/espn.js';
 import { computeTeamScoreByRound } from '../_lib/scoring.js';
+import { withEffectiveStatus } from '../_lib/tournamentStatus.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -16,30 +17,33 @@ export default async function handler(req, res) {
     .eq('id', tournamentId)
     .single();
   if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
+  const effectiveTournament = withEffectiveStatus(tournament);
 
-  // Get all teams with picks for this tournament
-  const { data: pickRows } = await supabase
+  const { data: pickRows, error: picksError } = await supabase
     .from('picks')
-    .select('team_id, teams!inner(id, name)')
+    .select('*, teams!inner(id, name)')
     .eq('tournament_id', tournamentId);
+  if (picksError) return res.status(500).json({ error: picksError.message });
 
-  // Dedupe teams
   const teamsMap = new Map();
+  const picksByTeam = new Map();
   for (const row of pickRows ?? []) {
     if (!teamsMap.has(row.team_id)) {
       teamsMap.set(row.team_id, { id: row.teams.id, name: row.teams.name });
     }
+    if (!picksByTeam.has(row.team_id)) picksByTeam.set(row.team_id, []);
+    picksByTeam.get(row.team_id).push(row);
   }
   const teams = [...teamsMap.values()].sort((a, b) => a.name.localeCompare(b.name));
 
   if (teams.length === 0) {
-    return res.json({ tournament, teams: [], lastUpdated: new Date().toISOString() });
+    return res.json({ tournament: effectiveTournament, teams: [], lastUpdated: new Date().toISOString() });
   }
 
   let playerScores;
   let venue = { course: null, par: null };
   try {
-    const result = await fetchPlayerScores(supabase, tournament.espn_tournament_id, tournament.status);
+    const result = await fetchPlayerScores(supabase, effectiveTournament.espn_tournament_id, effectiveTournament.status);
     playerScores = result.scoreMap;
     venue = result.venue ?? { course: null, par: null };
   } catch (err) {
@@ -49,12 +53,7 @@ export default async function handler(req, res) {
 
   const results = [];
   for (const team of teams) {
-    const { data: picks } = await supabase
-      .from('picks')
-      .select('*')
-      .eq('team_id', team.id)
-      .eq('tournament_id', tournamentId);
-
+    const picks = picksByTeam.get(team.id) ?? [];
     const { rounds, total, players } = computeTeamScoreByRound(picks ?? [], playerScores);
     const roundScores = {};
     for (let r = 1; r <= 4; r++) roundScores[r] = rounds[r]?.score ?? null;
@@ -93,7 +92,7 @@ export default async function handler(req, res) {
   }
 
   res.json({
-    tournament: { ...tournament, course: venue.course, par: venue.par },
+    tournament: { ...effectiveTournament, course: venue.course, par: venue.par },
     teams: results,
     lastUpdated: new Date().toISOString(),
   });

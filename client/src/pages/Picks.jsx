@@ -1,22 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getTeams, getTournaments, getEspnPlayers, getPicks, savePicks } from '../api.js';
+import AdminTokenControl from '../components/AdminTokenControl.jsx';
 import PlayerPicker from '../components/PlayerPicker.jsx';
 
 export default function Picks() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!tournamentId) {
-      getTournaments().then((data) => {
-        const active = data.tournaments.find((t) => t.status === 'in') ?? data.tournaments[0];
-        if (active) navigate(`/picks/${active.id}`, { replace: true });
-      });
-    }
-  }, [tournamentId, navigate]);
-
-  if (!tournamentId) return null;
 
   const [tournament, setTournament] = useState(null);
   const [teams, setTeams] = useState([]);
@@ -30,6 +20,16 @@ export default function Picks() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!tournamentId) {
+      getTournaments().then((data) => {
+        const active = data.tournaments.find((t) => t.status === 'in') ?? data.tournaments[0];
+        if (active) navigate(`/picks/${active.id}`, { replace: true });
+      });
+    }
+  }, [tournamentId, navigate]);
+
+  useEffect(() => {
+    if (!tournamentId) return;
     loadAll();
   }, [tournamentId]);
 
@@ -116,6 +116,8 @@ export default function Picks() {
     }
   }
 
+  if (!tournamentId) return null;
+
   if (loading) {
     return <div className="flex items-center justify-center h-48 text-pool-muted">Loading…</div>;
   }
@@ -148,6 +150,7 @@ export default function Picks() {
           <p className="text-sm text-pool-muted mt-0.5">{tournament?.name}</p>
         </div>
       </div>
+      <AdminTokenControl />
 
       {/* Team selector */}
       <div className="flex gap-2 flex-wrap">
