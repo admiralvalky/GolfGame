@@ -242,12 +242,14 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
   // skipCache is set to true when the post-tournament cache is found but stale so the
   // second cache lookup in the competitors===0 branch doesn't re-serve the same bad data.
   let skipCache = false;
+  let postCachedRows = null;
 
   if (status === 'post') {
     const { data: cached } = await supabase
       .from('cached_player_scores')
       .select('*')
       .eq('espn_tournament_id', espnTournamentId);
+    postCachedRows = cached ?? null;
     if (cached && cached.length > 0) {
       // Validate cache completeness. If no player has R3/R4 data the cache was likely
       // written mid-tournament (or from the wrong event) and needs to be refreshed.
@@ -260,7 +262,7 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
         console.log(`Serving post-tournament scores from cache for ${espnTournamentId}`);
         return { scoreMap: buildScoreMapFromCache(cached), venue: { course: null, par: null } };
       }
-      console.warn(`Post-tournament cache for ${espnTournamentId} has no R3/R4 data — stale or wrong event, refreshing`);
+      console.warn(`Post-tournament cache for ${espnTournamentId} has no R3/R4 data — trying ESPN refresh before using cache`);
       skipCache = true; // prevent the fallback path from re-serving this same stale data
     } else {
       console.warn(`No cache for completed tournament ${espnTournamentId}, falling back to ESPN`);
@@ -339,6 +341,11 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
       }
     } catch (coreErr) {
       console.error(`Core API fallback failed for ${espnTournamentId}:`, coreErr.message);
+    }
+
+    if (postCachedRows && postCachedRows.length > 0) {
+      console.warn(`Using existing post-tournament cache for ${espnTournamentId} after ESPN/Core fallback failed`);
+      return { scoreMap: buildScoreMapFromCache(postCachedRows), venue };
     }
 
     throw new Error(`No score data available for ESPN tournament ${espnTournamentId}`);
