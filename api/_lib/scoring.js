@@ -13,6 +13,17 @@ export function parseScore(scoreStr) {
 
 /**
  * Compute a team's score per round using per-round ESPN linescore data.
+ *
+ * Scoring rule: for each round 1–4, take the 2 lowest-scoring eligible players.
+ * "Eligible" means the player has a valid numeric score for that round
+ * (CUT/WD/DQ/MDF players are excluded via parseScore returning null).
+ *
+ * @param {Array<{player_espn_id: string, player_name: string}>} picks - 6 picks
+ * @param {Map<string, {rounds: object, thru: any, overallStatus: string, rank: string|null}>} playerScoresMap
+ * @returns {{ rounds: object, total: number|null, players: Array }}
+ *   - rounds: { 1: { score, players }, 2: ..., 3: ..., 4: ... }
+ *   - total: cumulative team score (null if no data yet)
+ *   - players: picks annotated with counting_rounds and eligible_rounds arrays
  */
 export function computeTeamScoreByRound(picks, playerScoresMap) {
   const players = picks.map((pick) => {

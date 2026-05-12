@@ -1,23 +1,26 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: '/api' });
+const api = axios.create({ baseURL: '/api', timeout: 15000 });
 const ADMIN_TOKEN_KEY = 'golfGameAdminToken';
 
 export function getAdminToken() {
   if (typeof window === 'undefined') return '';
-  return window.localStorage.getItem(ADMIN_TOKEN_KEY) ?? '';
+  return window.sessionStorage.getItem(ADMIN_TOKEN_KEY) ?? '';
 }
 
 export function setAdminToken(token) {
   if (typeof window === 'undefined') return;
   const trimmed = token.trim();
-  if (trimmed) window.localStorage.setItem(ADMIN_TOKEN_KEY, trimmed);
-  else window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+  if (trimmed) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, trimmed);
+  else window.sessionStorage.removeItem(ADMIN_TOKEN_KEY);
 }
 
 export function clearAdminToken() {
   setAdminToken('');
 }
+
+// Note: admin token lives in sessionStorage (cleared on tab close).
+// Using sessionStorage over localStorage reduces XSS exposure window.
 
 api.interceptors.request.use((config) => {
   const token = getAdminToken();

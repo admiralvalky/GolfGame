@@ -1,7 +1,24 @@
 const UA = 'Mozilla/5.0 (compatible; GolfPoolApp/1.0)';
 
+/** Default timeout for all ESPN API fetches (ms). */
+const FETCH_TIMEOUT_MS = 8000;
+
+/**
+ * fetch() wrapper that aborts after `ms` milliseconds.
+ * Prevents serverless functions from hanging on slow ESPN responses.
+ */
+async function fetchWithTimeout(url, options = {}, ms = FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function espnFetch(url) {
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
+  const res = await fetchWithTimeout(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`ESPN API error: ${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -66,7 +83,7 @@ export async function fetchRoundsFromCoreApi(espnTournamentId, playerIds) {
   const baseUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${espnTournamentId}/competitions/${espnTournamentId}`;
   const competitorsUrl = `${baseUrl}/competitors?limit=300&lang=en&region=us`;
 
-  const res = await fetch(competitorsUrl, { headers: { 'User-Agent': UA } });
+  const res = await fetchWithTimeout(competitorsUrl, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`Core API competitors fetch failed: ${res.status}`);
   const json = await res.json();
   const allCompetitors = (json.items ?? []).filter(c => idSet.size === 0 || idSet.has(c.id));
@@ -77,7 +94,7 @@ export async function fetchRoundsFromCoreApi(espnTournamentId, playerIds) {
     await Promise.all(
       allCompetitors.slice(i, i + BATCH).map(async (comp) => {
         try {
-          const lsRes = await fetch(`${baseUrl}/competitors/${comp.id}/linescores?lang=en&region=us`, {
+          const lsRes = await fetchWithTimeout(`${baseUrl}/competitors/${comp.id}/linescores?lang=en&region=us`, {
             headers: { 'User-Agent': UA },
           });
           if (!lsRes.ok) return;
@@ -105,7 +122,7 @@ export async function fetchCompetitorsFromCoreApi(espnTournamentId) {
   const baseUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${espnTournamentId}/competitions/${espnTournamentId}`;
 
   // One request returns all ~156 competitors with id + order.
-  const listRes = await fetch(`${baseUrl}/competitors?limit=300&lang=en&region=us`, { headers: { 'User-Agent': UA } });
+  const listRes = await fetchWithTimeout(`${baseUrl}/competitors?limit=300&lang=en&region=us`, { headers: { 'User-Agent': UA } });
   if (!listRes.ok) throw new Error(`Core API competitor list: ${listRes.status}`);
   const items = (await listRes.json()).items ?? [];
 
@@ -117,9 +134,9 @@ export async function fetchCompetitorsFromCoreApi(espnTournamentId) {
     await Promise.all(batch.map(async (item) => {
       try {
         const [athlete, lsJson] = await Promise.all([
-          fetch(`https://sports.core.api.espn.com/v2/sports/golf/athletes/${item.id}?lang=en&region=us`, { headers: { 'User-Agent': UA } })
+          fetchWithTimeout(`https://sports.core.api.espn.com/v2/sports/golf/athletes/${item.id}?lang=en&region=us`, { headers: { 'User-Agent': UA } })
             .then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch(`${baseUrl}/competitors/${item.id}/linescores?lang=en&region=us`, { headers: { 'User-Agent': UA } })
+          fetchWithTimeout(`${baseUrl}/competitors/${item.id}/linescores?lang=en&region=us`, { headers: { 'User-Agent': UA } })
             .then(r => r.ok ? r.json() : null).catch(() => null),
         ]);
         const rounds = {};
@@ -237,6 +254,20 @@ function buildScoreMapFromCache(rows) {
   return scoreMap;
 }
 
+/**
+ * Fetch all player scores for a tournament.
+ *
+ * Fallback chain:
+ *   1. `cached_player_scores` DB table — for `post` tournaments (ESPN clears linescores after events end)
+ *   2. ESPN Site API scoreboard — fast, works for live/recent events
+ *   3. DB cache again — if ESPN returned wrong event or empty data
+ *   4. ESPN Core API — retains historical data indefinitely; slower but authoritative
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} espnTournamentId
+ * @param {'upcoming'|'in'|'post'|''} status - effective tournament status
+ * @returns {Promise<{ scoreMap: Map<string, object>, venue: { course: string|null, par: number|null } }>}
+ */
 export async function fetchPlayerScores(supabase, espnTournamentId, status = '') {
   // Completed tournaments: serve from cache — ESPN clears linescores after events end.
   // skipCache is set to true when the post-tournament cache is found but stale so the
@@ -273,7 +304,7 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
   let competitors = [];
   let venue = { course: null, par: null };
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': UA } });
+    const res = await fetchWithTimeout(url, { headers: { 'User-Agent': UA } });
     if (res.ok) {
       const json = await res.json();
       competitors = json.events?.[0]?.competitions?.[0]?.competitors ?? [];

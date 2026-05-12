@@ -14,16 +14,21 @@ function tournamentDisplayName(t) {
   return `${t.name}${suffix}`;
 }
 
+// Auto-refresh window: ±1 day around tournament start/end.
+const AUTO_REFRESH_WINDOW_DAYS = 1;
+// Interval for auto-refresh during active window (ms).
+const AUTO_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+
 function shouldAutoRefresh(tournament) {
   if (!tournament) return false;
   const now = new Date();
   const windowStart = new Date(tournament.start_date);
-  windowStart.setDate(windowStart.getDate() - 1);
+  windowStart.setDate(windowStart.getDate() - AUTO_REFRESH_WINDOW_DAYS);
   const endBase = tournament.end_date
     ? new Date(tournament.end_date)
     : (() => { const d = new Date(tournament.start_date); d.setDate(d.getDate() + 3); return d; })();
   const windowEnd = new Date(endBase);
-  windowEnd.setDate(windowEnd.getDate() + 1);
+  windowEnd.setDate(windowEnd.getDate() + AUTO_REFRESH_WINDOW_DAYS);
   return now >= windowStart && now <= windowEnd;
 }
 
@@ -79,7 +84,7 @@ export default function Home() {
 
   const selectedTournament = tournaments?.find(t => t.id === selectedId) ?? null;
   const autoRefresh = shouldAutoRefresh(selectedTournament);
-  const intervalMs = autoRefresh ? 10 * 60 * 1000 : null;
+  const intervalMs = autoRefresh ? AUTO_REFRESH_INTERVAL_MS : null;
 
   const fetchFn = useCallback(() => {
     if (!selectedId) return Promise.resolve(null);
@@ -200,8 +205,14 @@ export default function Home() {
 
       {/* Error state */}
       {!loading && error && (
-        <div className="bg-pool-err-bg border border-red-900 rounded-xl p-4 text-pool-err-fg text-sm">
-          {error}
+        <div className="bg-pool-err-bg border border-red-900 rounded-xl p-4 text-pool-err-fg text-sm flex items-center justify-between gap-3">
+          <span>{error}</span>
+          <button
+            onClick={refresh}
+            className="shrink-0 text-pool-secondary hover:text-pool-primary underline text-xs"
+          >
+            Retry
+          </button>
         </div>
       )}
 
