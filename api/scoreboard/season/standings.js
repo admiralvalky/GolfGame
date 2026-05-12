@@ -2,6 +2,7 @@ import supabase from '../../_lib/supabase.js';
 import { fetchPlayerScores } from '../../_lib/espn.js';
 import { computeTeamScoreByRound } from '../../_lib/scoring.js';
 import { withEffectiveStatus } from '../../_lib/tournamentStatus.js';
+import { withHandler } from '../../_lib/handler.js';
 
 function pickSignature(picks) {
   return picks
@@ -26,7 +27,7 @@ function rankScores(scores) {
   return finishRanks;
 }
 
-export default async function handler(req, res) {
+export default withHandler(async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -80,7 +81,6 @@ export default async function handler(req, res) {
     cachedByTournament.get(row.tournament_id).push(row);
   }
 
-  // Build per-tournament score maps
   const tournamentResults = [];
 
   for (const rawTournament of tournaments ?? []) {
@@ -162,7 +162,6 @@ export default async function handler(req, res) {
     tournamentResults.push({ tournament, scores, finishRanks });
   }
 
-  // Build per-team season stats
   const seasonTotals = allTeams.map((team) => {
     const byTournament = {};
     const byTournamentFinish = {};
@@ -187,7 +186,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Most-picked player(s) for this team
     const counts = pickCountsByTeam[team.id] ?? {};
     const entries = Object.values(counts);
     let mostPickedPlayers = [];
@@ -247,4 +245,4 @@ export default async function handler(req, res) {
     teams: seasonTotals,
     tournaments: tournamentResults.map((t) => t.tournament),
   });
-}
+});

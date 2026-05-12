@@ -1,7 +1,8 @@
 import supabase from '../_lib/supabase.js';
 import { requireAdmin } from '../_lib/auth.js';
+import { withHandler, parseIntParam } from '../_lib/handler.js';
 
-export default async function handler(req, res) {
+export default withHandler(async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
 
   if (req.method === 'GET') {
@@ -33,8 +34,8 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const { id } = req.query;
-    if (!id) return res.status(400).json({ error: 'id query parameter required' });
+    const id = parseIntParam(req.query.id);
+    if (!id) return res.status(400).json({ error: 'id must be a positive integer' });
     const { name } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
     const { data: team, error } = await supabase
@@ -51,12 +52,12 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    const { id } = req.query;
-    if (!id) return res.status(400).json({ error: 'id query parameter required' });
+    const id = parseIntParam(req.query.id);
+    if (!id) return res.status(400).json({ error: 'id must be a positive integer' });
     const { error } = await supabase.from('teams').delete().eq('id', id);
     if (error) return res.status(500).json({ error: error.message });
     return res.json({ success: true });
   }
 
   res.status(405).json({ error: 'Method not allowed' });
-}
+});

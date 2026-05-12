@@ -2,8 +2,9 @@ import supabase from '../_lib/supabase.js';
 import { requireAdmin } from '../_lib/auth.js';
 import { normalizeStatus } from '../_lib/espn.js';
 import { clampStatusByDate, withEffectiveStatus } from '../_lib/tournamentStatus.js';
+import { withHandler, parseIntParam, isValidStatus } from '../_lib/handler.js';
 
-export default async function handler(req, res) {
+export default withHandler(async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
 
   if (req.method === 'GET') {
@@ -24,7 +25,6 @@ export default async function handler(req, res) {
 
     const normalizedStatus = clampStatusByDate(normalizeStatus(status), start_date, end_date);
 
-    // Check if already exists
     const { data: existing } = await supabase
       .from('tournaments')
       .select('*')
@@ -62,10 +62,13 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const id = req.query.id;
-    if (!id) return res.status(400).json({ error: 'id query parameter required' });
+    const id = parseIntParam(req.query.id);
+    if (!id) return res.status(400).json({ error: 'id must be a positive integer' });
     const { status, end_date } = req.body;
     if (!status) return res.status(400).json({ error: 'status is required' });
+    if (!isValidStatus(normalizeStatus(status))) {
+      return res.status(400).json({ error: 'status must be one of: upcoming, in, post' });
+    }
 
     const { data: existing } = await supabase
       .from('tournaments')
@@ -90,12 +93,12 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    const { id } = req.query;
-    if (!id) return res.status(400).json({ error: 'id query parameter required' });
+    const id = parseIntParam(req.query.id);
+    if (!id) return res.status(400).json({ error: 'id must be a positive integer' });
     const { error } = await supabase.from('tournaments').delete().eq('id', id);
     if (error) return res.status(500).json({ error: error.message });
     return res.json({ success: true });
   }
 
   res.status(405).json({ error: 'Method not allowed' });
-}
+});
