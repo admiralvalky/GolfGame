@@ -1,12 +1,13 @@
 import supabase from '../_lib/supabase.js';
 import { requireAdmin } from '../_lib/auth.js';
+import { withHandler, parseIntParam } from '../_lib/handler.js';
 
-export default async function handler(req, res) {
+export default withHandler(async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
 
   if (req.method === 'GET') {
-    const tournamentId = req.query.tournamentId;
-    if (!tournamentId) return res.status(400).json({ error: 'tournamentId query parameter required' });
+    const tournamentId = parseIntParam(req.query.tournamentId);
+    if (!tournamentId) return res.status(400).json({ error: 'tournamentId must be a positive integer' });
 
     const { data: picks, error } = await supabase
       .from('picks')
@@ -44,6 +45,12 @@ export default async function handler(req, res) {
   if (!team_id || !tournament_id || !Array.isArray(players)) {
     return res.status(400).json({ error: 'team_id, tournament_id, and players array required' });
   }
+  if (parseIntParam(team_id) === null) {
+    return res.status(400).json({ error: 'team_id must be a positive integer' });
+  }
+  if (parseIntParam(tournament_id) === null) {
+    return res.status(400).json({ error: 'tournament_id must be a positive integer' });
+  }
   if (players.length !== 6) {
     return res.status(400).json({ error: 'Exactly 6 players must be picked' });
   }
@@ -59,11 +66,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Duplicate players are not allowed' });
   }
 
-  // Verify team exists
   const { data: team } = await supabase.from('teams').select('id').eq('id', team_id).single();
   if (!team) return res.status(404).json({ error: 'Team not found' });
 
-  // Verify tournament exists
   const { data: tournament } = await supabase.from('tournaments').select('id').eq('id', tournament_id).single();
   if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
 
@@ -81,7 +86,7 @@ export default async function handler(req, res) {
     error.message?.includes('Could not find the function');
   if (!isMissingRpc) return res.status(500).json({ error: error.message });
 
-  console.warn('replace_team_picks RPC is missing; using non-transactional fallback. Run supabase-schema.sql to enable atomic pick saves.');
+  console.warn('replace_team_picks RPC is missing; using non-transactional fallback. Run supabase/migrations/20240101_init.sql to enable atomic pick saves.');
 
   const { error: deleteError } = await supabase
     .from('picks')
@@ -104,4 +109,4 @@ export default async function handler(req, res) {
 
   if (insertError) return res.status(500).json({ error: insertError.message });
   return res.status(201).json({ picks: fallbackSaved });
-}
+});

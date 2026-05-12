@@ -2,14 +2,15 @@ import supabase from '../_lib/supabase.js';
 import { fetchPlayerScores } from '../_lib/espn.js';
 import { computeTeamScoreByRound } from '../_lib/scoring.js';
 import { withEffectiveStatus } from '../_lib/tournamentStatus.js';
+import { withHandler, parseIntParam } from '../_lib/handler.js';
 
-export default async function handler(req, res) {
+export default withHandler(async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const tournamentId = req.query.tournamentId;
-  if (!tournamentId) return res.status(400).json({ error: 'tournamentId query parameter required' });
+  const tournamentId = parseIntParam(req.query.tournamentId);
+  if (!tournamentId) return res.status(400).json({ error: 'tournamentId must be a positive integer' });
 
   const { data: tournament } = await supabase
     .from('tournaments')
@@ -96,4 +97,4 @@ export default async function handler(req, res) {
     teams: results,
     lastUpdated: new Date().toISOString(),
   });
-}
+});

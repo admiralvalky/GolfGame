@@ -1,6 +1,7 @@
 import supabase from './_lib/supabase.js';
+import { withHandler } from './_lib/handler.js';
 
-export default async function handler(req, res) {
+export default withHandler(async function handler(req, res) {
   const { error } = await supabase
     .from('tournaments')
     .select('id')
@@ -11,4 +12,4 @@ export default async function handler(req, res) {
   }
 
   res.status(200).json({ ok: true, ts: new Date().toISOString() });
-}
+});
