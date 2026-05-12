@@ -2,8 +2,8 @@ import { PLAYER_GRID_COLS } from './PlayerInlineRow.jsx';
 
 // Absolute-positioned divider lines on the expanded container.
 // Calculated from the RIGHT edge: right-padding(0.75rem) + fixed column widths.
-// Tot divider (between R4 and Tot):  0.75 + 2.5 = 3.25rem
-// R1 divider  (between Thru and R1): 0.75 + 2.5 + 2 + 2 + 2 + 2 = 11.25rem
+// Tot divider  (between R4 and Tot):  0.75 + 2.5 = 3.25rem
+// R1 divider   (between Thru and R1): 0.75 + 2.5 + 2 + 2 + 2 + 2 = 11.25rem
 const DIVIDER_STYLE = {
   position: 'absolute',
   top: 0,
@@ -44,6 +44,25 @@ function isNumericLike(val) {
   return typeof val === 'number' || val === 'E';
 }
 
+/** ↑↓ movement indicator — positive = moved up, negative = moved down */
+function MovementBadge({ movement }) {
+  if (!movement) return null;
+  if (movement > 0) {
+    return (
+      <span className="flex items-center gap-0.5 text-pool-under text-[10px] font-bold leading-none">
+        <span>↑</span>
+        <span>{movement}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-0.5 text-pool-over text-[10px] font-bold leading-none">
+      <span>↓</span>
+      <span>{Math.abs(movement)}</span>
+    </span>
+  );
+}
+
 export default function HybridTeamRow({
   rank,
   teamName,
@@ -52,29 +71,55 @@ export default function HybridTeamRow({
   isExpanded,
   onToggle,
   children,
+  movement = 0,       // positions gained (positive) or lost (negative) since last refresh
+  aliveCount = null,  // number of players still alive (not CUT/WD/DQ/MDF), out of 6
+  isFlashing = false, // true briefly when score changes — triggers flash animation
 }) {
-  const leaderBorder = rank === 1 ? 'border-l-2 border-pool-gold' : 'border-l-2 border-transparent';
+  const isLeader = rank === 1;
+
+  // Leader: gold left border + subtle gold shadow glow
+  const leaderBorder = isLeader
+    ? 'border-l-2 border-pool-gold'
+    : 'border-l-2 border-transparent';
+  const leaderGlow = isLeader
+    ? 'shadow-[inset_0_0_24px_rgba(212,175,55,0.08),0_0_0_1px_rgba(212,175,55,0.15)]'
+    : '';
 
   const roundLabels = ['R1', 'R2', 'R3', 'R4'];
 
   return (
-    <div className="bg-pool-surface border-b border-pool-rim">
+    <div className={`bg-pool-surface border-b border-pool-rim ${isFlashing ? 'score-flash' : ''}`}>
       <button
         type="button"
         onClick={onToggle}
-        className={`w-full text-left px-3 py-2 ${leaderBorder}`}
+        className={`w-full text-left px-3 py-2 ${leaderBorder} ${leaderGlow}`}
       >
         <div className="flex items-center gap-3">
-          {/* Rank badge */}
-          <span className={`w-6 text-center text-sm shrink-0 ${rankStyle(rank)}`}>
-            {rank}
-          </span>
+          {/* Rank + movement */}
+          <div className="flex flex-col items-center w-6 shrink-0 gap-0.5">
+            <span className={`text-sm text-center ${rankStyle(rank)}`}>{rank}</span>
+            <MovementBadge movement={movement} />
+          </div>
 
           {/* Team name + round sub-row */}
           <div className="flex-1 min-w-0">
-            <span className="block text-pool-primary font-semibold truncate leading-tight">
-              {teamName}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="block text-pool-primary font-semibold truncate leading-tight">
+                {teamName}
+              </span>
+              {/* Alive count badge — only show when someone has been cut */}
+              {aliveCount !== null && aliveCount < 6 && (
+                <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none ${
+                  aliveCount <= 3
+                    ? 'bg-red-900/60 text-red-300'
+                    : aliveCount <= 4
+                    ? 'bg-amber-900/60 text-amber-300'
+                    : 'bg-pool-surface text-pool-muted border border-pool-rim'
+                }`}>
+                  {aliveCount}/6
+                </span>
+              )}
+            </div>
             <div className="flex gap-3 mt-0.5">
               {roundLabels.map((label, i) => {
                 const val = rounds[i] ?? null;
@@ -100,16 +145,17 @@ export default function HybridTeamRow({
 
       {isExpanded && (
         <div className="bg-pool-elevated border-t border-pool-rim" style={{ position: 'relative' }}>
-          {/* Continuous vertical dividers — span the full height of this container */}
+          {/* Continuous vertical dividers */}
           <div style={{ ...DIVIDER_STYLE, right: '3.25rem' }} />
           <div style={{ ...DIVIDER_STYLE, right: '11.25rem' }} />
 
-          {/* Column header row */}
+          {/* Column header row — matches PLAYER_GRID_COLS */}
           <div
             className="px-3 pt-2 pb-1 border-b border-pool-rim"
             style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, gap: '0' }}
           >
             <span className="block text-[9px] text-pool-faint text-center">#</span>
+            <span className="block text-[9px] text-pool-faint text-center" />
             <span className="block text-[9px] text-pool-faint">Player</span>
             <span className="block text-[9px] text-pool-faint text-center">Thru</span>
             <span className="block text-[9px] text-pool-faint text-center">R1</span>

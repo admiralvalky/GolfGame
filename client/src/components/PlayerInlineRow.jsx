@@ -1,6 +1,11 @@
+import { useState } from 'react';
+
 // Shared grid layout — imported by HybridTeamRow for the column header row.
 // Dividers are NOT in this grid; they are absolutely positioned on the container in HybridTeamRow.
-export const PLAYER_GRID_COLS = '1.5rem 1fr 1.75rem 2rem 2rem 2rem 2rem 2.5rem';
+// Columns: pos | avatar | name | thru | R1 | R2 | R3 | R4 | Tot
+export const PLAYER_GRID_COLS = '1.5rem 1.75rem 1fr 1.75rem 2rem 2rem 2rem 2rem 2.5rem';
+
+const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF', 'W/D']);
 
 function parseScore(val) {
   if (val === null || val === undefined || val === '') return null;
@@ -33,7 +38,36 @@ function formatTotal(val) {
   return String(val);
 }
 
+/**
+ * Player headshot from ESPN CDN. Falls back to initials circle on error.
+ * ESPN publishes photos at a predictable URL by player ID — no API key needed.
+ */
+function PlayerAvatar({ espnId, name }) {
+  const [failed, setFailed] = useState(false);
+  const initials = name
+    ? name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    : '?';
+
+  if (!espnId || failed) {
+    return (
+      <span className="w-6 h-6 rounded-full bg-pool-rim flex items-center justify-center text-[7px] text-pool-faint font-bold select-none">
+        {initials}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={`https://a.espncdn.com/i/headshots/golf/players/full/${espnId}.png`}
+      alt={name}
+      className="w-6 h-6 rounded-full object-cover object-top bg-pool-rim"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export default function PlayerInlineRow({
+  espnId,
   pos,
   name,
   thru,
@@ -43,21 +77,37 @@ export default function PlayerInlineRow({
   isCut = false,
   overallStatus = '',
 }) {
+  const cutLabel = CUT_STATUSES.has(overallStatus?.toUpperCase()) ? overallStatus.toUpperCase() : 'CUT';
+
   return (
     <div
-      className="bg-pool-elevated px-3 py-2"
+      className="bg-pool-elevated px-3 py-1.5"
       style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, alignItems: 'center', gap: '0' }}
     >
-      {/* Position — block ensures the span fills its grid cell so text-center works */}
+      {/* Position */}
       <span className="block text-[10px] text-pool-muted text-center">{pos}</span>
 
-      {/* Player name — greyed for cut players */}
-      <span className={`text-sm font-medium min-w-0 truncate pr-2${isCut ? ' opacity-40 text-pool-muted' : ' text-pool-primary'}`}>
-        {name}
+      {/* Avatar */}
+      <span className="flex items-center justify-center">
+        <PlayerAvatar espnId={espnId} name={name} />
       </span>
 
-      {/* Thru — greyed for cut players */}
-      <span className={`block text-[10px] text-center${isCut ? ' opacity-40 text-pool-muted' : ' text-pool-muted'}`}>{thru ?? '—'}</span>
+      {/* Player name + CUT badge */}
+      <span className={`flex items-center gap-1 min-w-0 pr-2${isCut ? ' opacity-50' : ''}`}>
+        <span className={`text-sm font-medium truncate ${isCut ? 'text-pool-muted' : 'text-pool-primary'}`}>
+          {name}
+        </span>
+        {isCut && (
+          <span className="shrink-0 text-[7px] font-bold px-1 py-0.5 rounded bg-red-900/70 text-red-300 leading-none uppercase tracking-wide">
+            {cutLabel}
+          </span>
+        )}
+      </span>
+
+      {/* Thru */}
+      <span className={`block text-[10px] text-center${isCut ? ' opacity-40 text-pool-muted' : ' text-pool-muted'}`}>
+        {thru ?? '—'}
+      </span>
 
       {/* Round scores R1–R4 */}
       {rounds.map((score, i) => {
@@ -74,16 +124,15 @@ export default function PlayerInlineRow({
           );
         }
 
-        // Unplayed rounds for cut players — show status label, greyed
+        // Unplayed rounds for cut players — blank (badge in name cell handles labeling)
         if (!hasScore && isCut) {
           return (
-            <span key={i} className="block text-xs font-mono text-center opacity-40 text-pool-faint">
-              {overallStatus || 'CUT'}
+            <span key={i} className="block text-xs font-mono text-center opacity-30 text-pool-faint">
+              —
             </span>
           );
         }
 
-        // Played rounds — full color whether cut or not
         return (
           <span key={i} className={`block text-xs font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}`}>
             {hasScore ? score : '—'}
@@ -91,8 +140,8 @@ export default function PlayerInlineRow({
         );
       })}
 
-      {/* Total — full color whether cut or not */}
-      <span className={`block text-sm font-mono font-bold text-right ${totalColor(total)}`}>
+      {/* Total */}
+      <span className={`block text-sm font-mono font-bold text-right ${isCut ? 'opacity-50 ' : ''}${totalColor(total)}`}>
         {formatTotal(total)}
       </span>
     </div>

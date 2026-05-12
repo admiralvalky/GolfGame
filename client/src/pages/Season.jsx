@@ -21,6 +21,114 @@ function Medal({ emoji, count }) {
   );
 }
 
+function formatScore(n) {
+  if (n == null) return '—';
+  if (n === 0) return 'E';
+  return n > 0 ? `+${n}` : String(n);
+}
+
+/**
+ * Compute head-to-head records from `byTournamentFinish` data.
+ * Returns: { [teamId]: { [opponentId]: { wins, losses, ties } } }
+ * A "win" = finished in a higher position (lower rank number) than opponent.
+ */
+function computeH2H(teams) {
+  const records = {};
+  for (const team of teams) {
+    records[team.team_id] = {};
+    for (const other of teams) {
+      if (other.team_id !== team.team_id) {
+        records[team.team_id][other.team_id] = { wins: 0, losses: 0, ties: 0 };
+      }
+    }
+  }
+
+  for (let i = 0; i < teams.length; i++) {
+    for (let j = i + 1; j < teams.length; j++) {
+      const a = teams[i];
+      const b = teams[j];
+      const tournamentIds = new Set([
+        ...Object.keys(a.byTournamentFinish ?? {}),
+        ...Object.keys(b.byTournamentFinish ?? {}),
+      ]);
+
+      for (const tid of tournamentIds) {
+        const rankA = a.byTournamentFinish?.[tid];
+        const rankB = b.byTournamentFinish?.[tid];
+        if (rankA == null || rankB == null) continue;
+        if (rankA < rankB) {
+          records[a.team_id][b.team_id].wins++;
+          records[b.team_id][a.team_id].losses++;
+        } else if (rankA > rankB) {
+          records[b.team_id][a.team_id].wins++;
+          records[a.team_id][b.team_id].losses++;
+        } else {
+          records[a.team_id][b.team_id].ties++;
+          records[b.team_id][a.team_id].ties++;
+        }
+      }
+    }
+  }
+  return records;
+}
+
+/** H2H matrix table — rows and cols are teams, cells show W-L record. */
+function H2HMatrix({ teams }) {
+  if (teams.length < 2) return null;
+  const h2h = computeH2H(teams);
+  const shortName = (name) => name.split(' ')[0]; // first word only for column headers
+
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-semibold text-pool-primary uppercase tracking-wider">Head-to-Head</h2>
+      <div className="overflow-x-auto rounded-xl border border-pool-rim">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-pool-rim">
+              <th className="text-left px-3 py-2 text-pool-faint font-normal w-24 bg-pool-elevated">vs</th>
+              {teams.map(t => (
+                <th key={t.team_id} className="px-2 py-2 text-pool-muted font-semibold text-center bg-pool-elevated min-w-[3.5rem]">
+                  {shortName(t.team_name)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-pool-rim">
+            {teams.map((row, ri) => (
+              <tr key={row.team_id} className={ri % 2 === 0 ? 'bg-pool-elevated' : 'bg-pool-surface'}>
+                <td className="px-3 py-2 text-pool-secondary font-semibold truncate max-w-[6rem]">
+                  {shortName(row.team_name)}
+                </td>
+                {teams.map(col => {
+                  if (col.team_id === row.team_id) {
+                    return (
+                      <td key={col.team_id} className="px-2 py-2 text-center text-pool-rim">
+                        —
+                      </td>
+                    );
+                  }
+                  const r = h2h[row.team_id]?.[col.team_id];
+                  if (!r) return <td key={col.team_id} className="px-2 py-2 text-center text-pool-faint">—</td>;
+                  const hasData = r.wins + r.losses + r.ties > 0;
+                  if (!hasData) return <td key={col.team_id} className="px-2 py-2 text-center text-pool-faint">—</td>;
+                  return (
+                    <td key={col.team_id} className="px-2 py-2 text-center font-mono">
+                      <span className={r.wins > r.losses ? 'text-pool-under' : r.wins < r.losses ? 'text-pool-over' : 'text-pool-even'}>
+                        {r.wins}-{r.losses}{r.ties > 0 ? `-${r.ties}` : ''}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[10px] text-pool-faint">W-L per tournament. Green = winning record.</p>
+    </div>
+  );
+}
+
 export default function Season() {
   const fetchStandings = useCallback(() => getSeasonStandings(), []);
   const { data, loading, error, lastUpdated, refresh } = useAutoRefresh(fetchStandings);
@@ -66,11 +174,12 @@ export default function Season() {
         <LastUpdated timestamp={lastUpdated} onRefresh={refresh} loading={loading} />
       </div>
 
+      {/* Season standings */}
       <div className="bg-pool-elevated rounded-xl border border-pool-rim divide-y divide-pool-rim">
         {teams.map((team) => {
           const avg = team.avgScore;
           const avgDisplay = avg == null ? null : avg === 0 ? 'E' : avg > 0 ? `+${avg}` : String(avg);
-const isLeader = team.rank === 1;
+          const isLeader = team.rank === 1;
           const hasMedals = team.finishes[1] || team.finishes[2] || team.finishes[3];
 
           return (
@@ -83,13 +192,13 @@ const isLeader = team.rank === 1;
 
               {/* Name + stats block */}
               <div className="flex-1 min-w-0 space-y-1.5">
-                {/* Row 1: team name */}
+                {/* Team name */}
                 <span className={`font-semibold text-base leading-tight ${isLeader ? 'text-pool-gold' : 'text-pool-primary'}`}>
                   {team.team_name}
                 </span>
 
-                {/* Row 2: medals + avg stats */}
-                <div className="flex items-center gap-3">
+                {/* Medals + avg stats */}
+                <div className="flex items-center gap-3 flex-wrap">
                   {hasMedals ? (
                     <>
                       <Medal emoji="🥇" count={team.finishes[1]} />
@@ -112,6 +221,19 @@ const isLeader = team.rank === 1;
                     )}
                   </div>
                 </div>
+
+                {/* Best pick highlight */}
+                {team.bestPick && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-pool-gold">★</span>
+                    <span className="text-pool-faint">Best pick:</span>
+                    <span className="text-pool-secondary font-medium">{team.bestPick.playerName}</span>
+                    <span className={`font-mono font-semibold ${team.bestPick.numericScore < 0 ? 'text-pool-under' : team.bestPick.numericScore === 0 ? 'text-pool-even' : 'text-pool-over'}`}>
+                      {formatScore(team.bestPick.numericScore)}
+                    </span>
+                    <span className="text-pool-faint truncate">@ {team.bestPick.tournamentName}</span>
+                  </div>
+                )}
               </div>
 
               {/* Chevron */}
@@ -120,6 +242,11 @@ const isLeader = team.rank === 1;
           );
         })}
       </div>
+
+      {/* Head-to-head matrix — only show when 2+ completed tournaments exist */}
+      {completedCount >= 1 && teams.length >= 2 && (
+        <H2HMatrix teams={teams} />
+      )}
 
       <p className="text-xs text-pool-faint text-center">
         Tap a team to see their full season stats

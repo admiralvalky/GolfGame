@@ -7,3 +7,14 @@
     @apply bg-pool-base text-pool-primary min-h-screen;
   }
 }
+
+@layer utilities {
+  /* Score-change flash: brief green wash on the team row when scores update */
+  .score-flash {
+    animation: score-flash 1.6s ease-out forwards;
+  }
+  @keyframes score-flash {
+    0%   { background-color: rgba(74, 222, 128, 0.10); }
+    100% { background-color: transparent; }
+  }
+}

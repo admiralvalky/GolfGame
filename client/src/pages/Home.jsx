@@ -7,17 +7,19 @@ import HybridTeamRow from '../components/HybridTeamRow.jsx';
 import PlayerInlineRow from '../components/PlayerInlineRow.jsx';
 import LastUpdated from '../components/LastUpdated.jsx';
 
+// Auto-refresh window: ±1 day around tournament start/end.
+const AUTO_REFRESH_WINDOW_DAYS = 1;
+// Interval for auto-refresh during active window (ms).
+const AUTO_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+// CUT statuses — used to compute alive count per team
+const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF', 'W/D']);
+
 function tournamentDisplayName(t) {
   if (!t) return '—';
   const year = t.start_date ? new Date(t.start_date).getFullYear() : null;
   const suffix = year ? ` '${String(year).slice(2)}` : '';
   return `${t.name}${suffix}`;
 }
-
-// Auto-refresh window: ±1 day around tournament start/end.
-const AUTO_REFRESH_WINDOW_DAYS = 1;
-// Interval for auto-refresh during active window (ms).
-const AUTO_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 function shouldAutoRefresh(tournament) {
   if (!tournament) return false;
@@ -55,12 +57,50 @@ function sortPlayers(players) {
   });
 }
 
+/** Pulsing live indicator dot — shown when tournament status is 'in'. */
+function LiveDot() {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pool-under opacity-60" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-pool-under" />
+      </span>
+      <span className="text-[10px] font-semibold text-pool-under uppercase tracking-widest">Live</span>
+    </span>
+  );
+}
+
+/** Course hero card — shows venue name and par with a styled banner. */
+function CourseHero({ course, par }) {
+  if (!course) return null;
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-pool-rim bg-pool-elevated px-4 py-3">
+      {/* Subtle decorative gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-pool-rim/20 via-transparent to-transparent pointer-events-none" />
+      <p className="text-[9px] uppercase tracking-widest text-pool-faint font-semibold mb-0.5">Course</p>
+      <p className="text-sm font-semibold text-pool-secondary leading-tight">{course}</p>
+      {par && (
+        <p className="text-xs text-pool-faint mt-0.5">Par {par}</p>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
-  const [tournaments, setTournaments] = useState(null); // null = loading
+  const [tournaments, setTournaments] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [expandedTeams, setExpandedTeams] = useState(new Set());
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Movement tracking: prev team ranks across refreshes
+  const prevRanksRef = useRef({});
+  const [movements, setMovements] = useState({});
+
+  // Score flash: brief animation when scores change
+  const prevScoresRef = useRef({});
+  const [flashingTeams, setFlashingTeams] = useState(new Set());
+  const flashTimerRef = useRef(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -93,6 +133,50 @@ export default function Home() {
 
   const { data, loading, error, lastUpdated, refresh } = useAutoRefresh(fetchFn, intervalMs);
 
+  // Track rank movements and score changes between refreshes
+  useEffect(() => {
+    if (!data?.teams) return;
+
+    const newMovements = {};
+    const newFlashing = new Set();
+    const currentRanks = {};
+    const currentScores = {};
+
+    for (const team of data.teams) {
+      currentRanks[team.team_id] = team.rank;
+      currentScores[team.team_id] = team.total;
+
+      const prevRank = prevRanksRef.current[team.team_id];
+      const prevScore = prevScoresRef.current[team.team_id];
+
+      newMovements[team.team_id] = (prevRank != null && prevRank !== team.rank)
+        ? prevRank - team.rank  // positive = moved up
+        : 0;
+
+      if (prevScore !== undefined && prevScore !== team.total) {
+        newFlashing.add(team.team_id);
+      }
+    }
+
+    prevRanksRef.current = currentRanks;
+    prevScoresRef.current = currentScores;
+    setMovements(newMovements);
+
+    if (newFlashing.size > 0) {
+      setFlashingTeams(newFlashing);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = setTimeout(() => setFlashingTeams(new Set()), 1800);
+    }
+  }, [data]);
+
+  // Reset movement/flash state when tournament changes
+  useEffect(() => {
+    prevRanksRef.current = {};
+    prevScoresRef.current = {};
+    setMovements({});
+    setFlashingTeams(new Set());
+  }, [selectedId]);
+
   function toggleTeam(teamId) {
     setExpandedTeams(prev => {
       const next = new Set(prev);
@@ -124,32 +208,38 @@ export default function Home() {
     );
   }
 
+  const effectiveStatus = data?.tournament?.status ?? selectedTournament?.status;
+  const isLive = effectiveStatus === 'in';
+
   return (
     <div className="space-y-3 p-4">
 
       {/* Tournament title — acts as the dropdown selector */}
       <div className="relative" ref={dropdownRef}>
-        <button
-          type="button"
-          onClick={() => setDropdownOpen(p => !p)}
-          className="flex items-start gap-1.5 group text-left"
-          aria-haspopup="listbox"
-          aria-expanded={dropdownOpen}
-        >
-          <h1 className="text-2xl font-bold text-pool-primary group-hover:text-pool-secondary transition-colors leading-tight">
-            {tournamentDisplayName(selectedTournament)}
-          </h1>
-          {tournaments.length > 1 && (
-            <svg
-              className="w-4 h-4 mt-1.5 text-pool-faint group-hover:text-pool-muted transition-colors shrink-0"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-            </svg>
-          )}
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setDropdownOpen(p => !p)}
+            className="flex items-start gap-1.5 group text-left"
+            aria-haspopup="listbox"
+            aria-expanded={dropdownOpen}
+          >
+            <h1 className="text-2xl font-bold text-pool-primary group-hover:text-pool-secondary transition-colors leading-tight">
+              {tournamentDisplayName(selectedTournament)}
+            </h1>
+            {tournaments.length > 1 && (
+              <svg
+                className="w-4 h-4 mt-1.5 text-pool-faint group-hover:text-pool-muted transition-colors shrink-0"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+          {isLive && <LiveDot />}
+        </div>
 
         {/* Dropdown list */}
         {dropdownOpen && tournaments.length > 1 && (
@@ -177,22 +267,17 @@ export default function Home() {
         )}
       </div>
 
-      {/* Tournament meta: status, dates, course */}
+      {/* Tournament meta */}
       {selectedTournament && (
-        <div className="space-y-0.5">
-          <p className="text-xs text-pool-muted uppercase tracking-widest">
-            {statusLabel(data?.tournament?.status ?? selectedTournament.status)}
-            {' · '}
-            {formatTournamentDates(selectedTournament)}
-          </p>
-          {data?.tournament?.course && (
-            <p className="text-xs text-pool-faint">
-              {data.tournament.course}
-              {data.tournament.par ? ` · Par ${data.tournament.par}` : ''}
-            </p>
-          )}
-        </div>
+        <p className="text-xs text-pool-muted uppercase tracking-widest">
+          {statusLabel(effectiveStatus)}
+          {' · '}
+          {formatTournamentDates(selectedTournament)}
+        </p>
       )}
+
+      {/* Course hero card */}
+      <CourseHero course={data?.tournament?.course} par={data?.tournament?.par} />
 
       {/* Scoreboard loading state */}
       {loading && (
@@ -227,7 +312,7 @@ export default function Home() {
       {/* Leaderboard */}
       {!loading && !error && data?.teams?.length > 0 && (
         <div className="rounded-xl overflow-hidden border border-pool-rim">
-          {data.teams.map((team, idx) => {
+          {data.teams.map((team) => {
             const teamRounds = [
               team.rounds?.[1],
               team.rounds?.[2],
@@ -236,6 +321,11 @@ export default function Home() {
             ];
             const isExpanded = expandedTeams.has(team.team_id);
             const sortedPlayers = sortPlayers(team.players ?? []);
+
+            // Count players still alive (not CUT/WD/DQ/MDF)
+            const aliveCount = team.players?.filter(
+              p => !CUT_STATUSES.has((p.overallStatus ?? '').toUpperCase())
+            ).length ?? null;
 
             return (
               <HybridTeamRow
@@ -246,9 +336,12 @@ export default function Home() {
                 rounds={teamRounds}
                 isExpanded={isExpanded}
                 onToggle={() => toggleTeam(team.team_id)}
+                movement={movements[team.team_id] ?? 0}
+                aliveCount={aliveCount}
+                isFlashing={flashingTeams.has(team.team_id)}
               >
                 {sortedPlayers.map(player => {
-                  const isCut = ['CUT', 'WD', 'DQ', 'MDF', 'W/D'].includes(
+                  const isCut = CUT_STATUSES.has(
                     (player.overallStatus ?? '').toUpperCase()
                   );
                   const playerRounds = [
@@ -266,6 +359,7 @@ export default function Home() {
                   return (
                     <PlayerInlineRow
                       key={player.player_espn_id}
+                      espnId={player.player_espn_id}
                       pos={pos}
                       name={player.player_name}
                       thru={player.thru ?? '—'}

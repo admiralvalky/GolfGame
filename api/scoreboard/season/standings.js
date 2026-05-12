@@ -4,6 +4,16 @@ import { computeTeamScoreByRound } from '../../_lib/scoring.js';
 import { withEffectiveStatus } from '../../_lib/tournamentStatus.js';
 import { withHandler } from '../../_lib/handler.js';
 
+const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF', 'W/D']);
+
+function parseNumericScore(s) {
+  if (!s) return null;
+  const str = String(s).trim().toUpperCase();
+  if (str === 'E') return 0;
+  const n = parseInt(str, 10);
+  return isNaN(n) ? null : n;
+}
+
 function pickSignature(picks) {
   return picks
     .map((p) => String(p.player_espn_id))
@@ -56,6 +66,22 @@ export default withHandler(async function handler(req, res) {
     .select('*');
   if (cachedError) {
     console.warn('Skipping cached team scores:', cachedError.message);
+  }
+
+  // Best-pick lookup: individual player scores for all completed tournaments
+  const { data: cachedPlayerRows } = await supabase
+    .from('cached_player_scores')
+    .select('espn_tournament_id, player_espn_id, total_score, overall_status');
+
+  const playerScoreLookup = new Map();
+  for (const row of cachedPlayerRows ?? []) {
+    playerScoreLookup.set(`${row.espn_tournament_id}|${row.player_espn_id}`, row);
+  }
+
+  // Map tournament DB id → espn_tournament_id for best-pick lookup
+  const tournamentEspnMap = new Map();
+  for (const t of tournaments ?? []) {
+    tournamentEspnMap.set(t.id, t.espn_tournament_id);
   }
 
   const picksByTournament = new Map();
@@ -197,6 +223,30 @@ export default withHandler(async function handler(req, res) {
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
+    // Best single pick: lowest individual player score across all completed tournaments
+    let bestPick = null;
+    let bestPickNumeric = Infinity;
+    for (const pick of allPicks ?? []) {
+      if (pick.team_id !== team.id) continue;
+      const espnId = tournamentEspnMap.get(pick.tournament_id);
+      if (!espnId) continue;
+      const scoreRow = playerScoreLookup.get(`${espnId}|${pick.player_espn_id}`);
+      if (!scoreRow) continue;
+      if (CUT_STATUSES.has((scoreRow.overall_status ?? '').toUpperCase())) continue;
+      const numeric = parseNumericScore(scoreRow.total_score);
+      if (numeric === null) continue;
+      if (numeric < bestPickNumeric) {
+        bestPickNumeric = numeric;
+        const tournament = (tournaments ?? []).find(t => t.espn_tournament_id === espnId);
+        bestPick = {
+          playerName: pick.player_name,
+          totalScore: scoreRow.total_score,
+          numericScore: numeric,
+          tournamentName: tournament?.name ?? 'Unknown',
+        };
+      }
+    }
+
     return {
       team_id: team.id,
       team_name: team.name,
@@ -208,6 +258,7 @@ export default withHandler(async function handler(req, res) {
       total: played > 0 ? scoreSum : null,
       played,
       mostPickedPlayers,
+      bestPick,
     };
   });
 
