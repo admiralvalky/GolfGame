@@ -70,9 +70,10 @@ function LiveDot() {
   );
 }
 
-/** Course hero card — venue name and par with decorative gold accents. */
-function CourseHero({ course, par }) {
+/** Course hero card — venue name, par, and optional city/state with gold accents. */
+function CourseHero({ course, par, city, state }) {
   if (!course) return null;
+  const location = [city, state].filter(Boolean).join(', ');
   return (
     <div className="relative overflow-hidden rounded-xl border border-pool-gold/20 bg-pool-elevated">
       {/* Gold shimmer line at top */}
@@ -89,6 +90,9 @@ function CourseHero({ course, par }) {
             <span>⛳</span><span>This Week's Course</span>
           </p>
           <p className="text-base font-bold text-pool-primary leading-snug truncate">{course}</p>
+          {location && (
+            <p className="text-xs text-pool-muted mt-0.5">{location}</p>
+          )}
         </div>
         {par && (
           <div className="shrink-0 flex flex-col items-center justify-center w-12 h-12 rounded-full border border-pool-gold/35 bg-pool-gold/8">
@@ -115,6 +119,9 @@ export default function Home() {
   const prevScoresRef = useRef({});
   const [flashingTeams, setFlashingTeams] = useState(new Set());
   const flashTimerRef = useRef(null);
+
+  // Venue info: fetched from Core API when scoreboard doesn't include it
+  const [venueInfo, setVenueInfo] = useState(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -146,6 +153,20 @@ export default function Home() {
   }, [selectedId]);
 
   const { data, loading, error, lastUpdated, refresh } = useAutoRefresh(fetchFn, intervalMs);
+
+  // Fetch venue details (course name, city, state) from Core API when scoreboard
+  // doesn't include them — happens for post-tournament (cache) and some live events.
+  useEffect(() => {
+    const espnId = data?.tournament?.espn_tournament_id;
+    if (!espnId) { setVenueInfo(null); return; }
+    if (data.tournament.course) { setVenueInfo(null); return; } // scoreboard already has it
+    let cancelled = false;
+    fetch(`/api/espn?route=details&id=${espnId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (!cancelled && d?.courseName) setVenueInfo(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [data?.tournament?.espn_tournament_id, data?.tournament?.course]);
 
   // Track score-change flashes + round-based rank movement
   useEffect(() => {
@@ -326,7 +347,12 @@ export default function Home() {
       )}
 
       {/* Course hero card */}
-      <CourseHero course={data?.tournament?.course} par={data?.tournament?.par} />
+      <CourseHero
+        course={data?.tournament?.course ?? venueInfo?.courseName}
+        par={data?.tournament?.par ?? venueInfo?.par}
+        city={venueInfo?.city}
+        state={venueInfo?.state}
+      />
 
       {/* Scoreboard loading state */}
       {loading && (

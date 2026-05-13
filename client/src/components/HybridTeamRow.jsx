@@ -130,7 +130,7 @@ export default function HybridTeamRow({
   const roundLabels = ['R1', 'R2', 'R3', 'R4'];
 
   return (
-    <div className={`border-b border-pool-rim ${isLeader ? 'bg-[rgba(212,175,55,0.04)]' : 'bg-pool-surface'} ${isFlashing ? 'score-flash' : ''}`}>
+    <div className={`bg-pool-surface border-b border-pool-rim ${isFlashing ? 'score-flash' : ''}`}>
       <button
         type="button"
         onClick={onToggle}
