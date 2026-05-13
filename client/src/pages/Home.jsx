@@ -347,12 +347,13 @@ export default function Home() {
       )}
 
       {/* Course hero card */}
-      <CourseHero
+      {/* CourseHero hidden — pending redesign */}
+      {/* <CourseHero
         course={data?.tournament?.course ?? venueInfo?.courseName}
         par={data?.tournament?.par ?? venueInfo?.par}
         city={venueInfo?.city}
         state={venueInfo?.state}
-      />
+      /> */}
 
       {/* Scoreboard loading state */}
       {loading && (
