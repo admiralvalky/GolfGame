@@ -70,18 +70,33 @@ function LiveDot() {
   );
 }
 
-/** Course hero card — shows venue name and par with a styled banner. */
+/** Course hero card — venue name and par with decorative gold accents. */
 function CourseHero({ course, par }) {
   if (!course) return null;
   return (
-    <div className="relative overflow-hidden rounded-xl border border-pool-rim bg-pool-elevated px-4 py-3">
-      {/* Subtle decorative gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-pool-rim/20 via-transparent to-transparent pointer-events-none" />
-      <p className="text-[9px] uppercase tracking-widest text-pool-faint font-semibold mb-0.5">Course</p>
-      <p className="text-sm font-semibold text-pool-secondary leading-tight">{course}</p>
-      {par && (
-        <p className="text-xs text-pool-faint mt-0.5">Par {par}</p>
-      )}
+    <div className="relative overflow-hidden rounded-xl border border-pool-gold/20 bg-pool-elevated">
+      {/* Gold shimmer line at top */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-pool-gold/60 to-transparent pointer-events-none" />
+      {/* Gradient wash */}
+      <div className="absolute inset-0 bg-gradient-to-br from-pool-rim/30 via-transparent to-pool-gold/5 pointer-events-none" />
+      {/* Decorative concentric rings (right side) */}
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full border border-pool-gold/10 opacity-50 pointer-events-none" />
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-pool-gold/10 opacity-40 pointer-events-none" />
+
+      <div className="relative flex items-center justify-between gap-4 px-4 py-3.5">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-pool-gold/70 font-semibold mb-1">
+            <span>⛳</span><span>This Week's Course</span>
+          </p>
+          <p className="text-base font-bold text-pool-primary leading-snug truncate">{course}</p>
+        </div>
+        {par && (
+          <div className="shrink-0 flex flex-col items-center justify-center w-12 h-12 rounded-full border border-pool-gold/35 bg-pool-gold/8">
+            <span className="text-[9px] text-pool-gold/65 uppercase tracking-wide font-semibold leading-none">Par</span>
+            <span className="text-xl font-bold text-pool-gold leading-tight">{par}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -93,8 +108,7 @@ export default function Home() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Movement tracking: prev team ranks across refreshes
-  const prevRanksRef = useRef({});
+  // Round-based movement: stored in localStorage, keyed by tournament+round
   const [movements, setMovements] = useState({});
 
   // Score flash: brief animation when scores change
@@ -133,45 +147,80 @@ export default function Home() {
 
   const { data, loading, error, lastUpdated, refresh } = useAutoRefresh(fetchFn, intervalMs);
 
-  // Track rank movements and score changes between refreshes
+  // Track score-change flashes + round-based rank movement
   useEffect(() => {
     if (!data?.teams) return;
 
-    const newMovements = {};
+    // ── Score flash: brief animation when team total changes ─────────────
     const newFlashing = new Set();
-    const currentRanks = {};
     const currentScores = {};
-
     for (const team of data.teams) {
-      currentRanks[team.team_id] = team.rank;
       currentScores[team.team_id] = team.total;
-
-      const prevRank = prevRanksRef.current[team.team_id];
-      const prevScore = prevScoresRef.current[team.team_id];
-
-      newMovements[team.team_id] = (prevRank != null && prevRank !== team.rank)
-        ? prevRank - team.rank  // positive = moved up
-        : 0;
-
-      if (prevScore !== undefined && prevScore !== team.total) {
+      if (
+        prevScoresRef.current[team.team_id] !== undefined &&
+        prevScoresRef.current[team.team_id] !== team.total
+      ) {
         newFlashing.add(team.team_id);
       }
     }
-
-    prevRanksRef.current = currentRanks;
     prevScoresRef.current = currentScores;
-    setMovements(newMovements);
-
     if (newFlashing.size > 0) {
       setFlashingTeams(newFlashing);
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
       flashTimerRef.current = setTimeout(() => setFlashingTeams(new Set()), 1800);
     }
-  }, [data]);
+
+    // ── Round-based movement: compare current rank to previous round's end ─
+    // Hide arrows the day after the tournament finishes.
+    const status = data.tournament?.status ?? selectedTournament?.status;
+    const hideMovement = (() => {
+      if (status !== 'post') return false;
+      const endDate = selectedTournament?.end_date;
+      if (!endDate) return false;
+      const cutoff = new Date(endDate);
+      cutoff.setDate(cutoff.getDate() + 1);
+      return new Date() > cutoff;
+    })();
+
+    if (hideMovement) { setMovements({}); return; }
+
+    // Determine the highest round that has any score across all teams
+    let currentRound = 0;
+    for (const team of data.teams) {
+      for (const [k, v] of Object.entries(team.rounds ?? {})) {
+        const r = Number(k);
+        if (!isNaN(r) && v != null && r > currentRound) currentRound = r;
+      }
+    }
+    currentRound = currentRound || 1;
+
+    const currentRanks = {};
+    for (const team of data.teams) currentRanks[team.team_id] = team.rank;
+
+    // Load localStorage snapshot — { round: N, ranks: { teamId: rank } }
+    const lsKey = `golf_round_baseline_${selectedId}`;
+    let baseline = null;
+    try { baseline = JSON.parse(localStorage.getItem(lsKey) ?? 'null'); } catch {}
+
+    const newMovements = {};
+    if (baseline && baseline.round < currentRound) {
+      // Round advanced → movement = prevRoundRank - currentRank (positive = moved up)
+      for (const team of data.teams) {
+        const prev = baseline.ranks?.[team.team_id];
+        newMovements[team.team_id] = prev != null ? prev - team.rank : 0;
+      }
+    }
+    // Same round or no baseline → no arrows (0 movement)
+    setMovements(newMovements);
+
+    // Always persist current state so end-of-round snapshot stays fresh
+    try {
+      localStorage.setItem(lsKey, JSON.stringify({ round: currentRound, ranks: currentRanks }));
+    } catch {}
+  }, [data, selectedId, selectedTournament]);
 
   // Reset movement/flash state when tournament changes
   useEffect(() => {
-    prevRanksRef.current = {};
     prevScoresRef.current = {};
     setMovements({});
     setFlashingTeams(new Set());

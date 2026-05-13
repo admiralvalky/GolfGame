@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from 'react';
+
 // Divider positions are defined in index.css as .player-divider-r1 / .player-divider-tot
 // (responsive — right offset shifts on mobile because R1-R4 columns are narrower).
 const DIVIDER_BASE = {
@@ -40,6 +42,50 @@ function isNumericLike(val) {
   return typeof val === 'number' || val === 'E';
 }
 
+/**
+ * Smoothly counts from old score to new score (600ms cubic ease-out)
+ * when the `value` prop changes. Falls back to instant update for non-numeric
+ * transitions (e.g. null → -3, or 'E' → non-'E').
+ */
+function AnimatedScore({ value, className }) {
+  const [displayed, setDisplayed] = useState(value);
+  const prevRef = useRef(value);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const from = prevRef.current;
+    const to = value;
+    if (from === to) return;
+    prevRef.current = to;
+
+    // Resolve E → 0 for interpolation; null/undefined → skip animation
+    const fromNum = from === 'E' ? 0 : (typeof from === 'number' ? from : null);
+    const toNum   = to   === 'E' ? 0 : (typeof to   === 'number' ? to   : null);
+    if (fromNum === null || toNum === null) { setDisplayed(to); return; }
+
+    const duration = 600;
+    const start = performance.now();
+
+    function tick(now) {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3); // cubic ease-out
+      const cur = Math.round(fromNum + (toNum - fromNum) * eased);
+      setDisplayed(cur);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        setDisplayed(to); // snap to exact final value
+      }
+    }
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [value]);
+
+  return <span className={className}>{formatScore(displayed)}</span>;
+}
+
 /** ↑↓ movement indicator — positive = moved up, negative = moved down */
 function MovementBadge({ movement }) {
   if (!movement) return null;
@@ -73,18 +119,18 @@ export default function HybridTeamRow({
 }) {
   const isLeader = rank === 1;
 
-  // Leader: gold left border + subtle gold shadow glow
+  // Leader: gold left border + strong gold inset glow on button
   const leaderBorder = isLeader
     ? 'border-l-2 border-pool-gold'
     : 'border-l-2 border-transparent';
   const leaderGlow = isLeader
-    ? 'shadow-[inset_0_0_24px_rgba(212,175,55,0.08),0_0_0_1px_rgba(212,175,55,0.15)]'
+    ? 'shadow-[inset_0_0_48px_rgba(212,175,55,0.22),0_0_0_1px_rgba(212,175,55,0.50)]'
     : '';
 
   const roundLabels = ['R1', 'R2', 'R3', 'R4'];
 
   return (
-    <div className={`bg-pool-surface border-b border-pool-rim ${isFlashing ? 'score-flash' : ''}`}>
+    <div className={`border-b border-pool-rim ${isLeader ? 'bg-[rgba(212,175,55,0.04)]' : 'bg-pool-surface'} ${isFlashing ? 'score-flash' : ''}`}>
       <button
         type="button"
         onClick={onToggle}
@@ -132,10 +178,11 @@ export default function HybridTeamRow({
             </div>
           </div>
 
-          {/* Total score */}
-          <span className={`font-mono font-bold text-2xl shrink-0 ${scoreColor(total)}`}>
-            {formatScore(total)}
-          </span>
+          {/* Total score — animates when value changes */}
+          <AnimatedScore
+            value={total}
+            className={`font-mono font-bold text-2xl shrink-0 ${scoreColor(total)}`}
+          />
         </div>
       </button>
 
