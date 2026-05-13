@@ -88,7 +88,7 @@ export default function HybridTeamRow({
       <button
         type="button"
         onClick={onToggle}
-        className={`w-full text-left px-3 py-2 ${leaderBorder} ${leaderGlow}`}
+        className={`w-full text-left px-2 py-2 sm:px-3 ${leaderBorder} ${leaderGlow}`}
       >
         <div className="flex items-center gap-3">
           {/* Rank + movement */}
@@ -146,7 +146,7 @@ export default function HybridTeamRow({
           <div className="player-divider-r1"  style={DIVIDER_BASE} />
 
           {/* Column header row — same responsive grid as player rows */}
-          <div className="player-row-grid px-3 pt-2 pb-1 border-b border-pool-rim">
+          <div className="player-row-grid px-2 pt-2 pb-1 sm:px-3 border-b border-pool-rim">
             <span className="block text-[9px] text-pool-faint text-center">#</span>
             <span className="block text-[9px] text-pool-faint text-center" />
             <span className="block text-[9px] text-pool-faint">Player</span>

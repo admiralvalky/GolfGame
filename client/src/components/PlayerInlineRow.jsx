@@ -91,7 +91,7 @@ export default function PlayerInlineRow({
   const cutLabel = CUT_STATUSES.has(overallStatus?.toUpperCase()) ? overallStatus.toUpperCase() : 'CUT';
 
   return (
-    <div className="player-row-grid bg-pool-elevated px-3 py-1.5">
+    <div className="player-row-grid bg-pool-elevated px-2 py-1.5 sm:px-3">
       {/* Position */}
       <span className="block text-[10px] text-pool-muted text-center">{pos}</span>
 

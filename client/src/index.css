@@ -39,15 +39,19 @@
 
   /*
    * Vertical dividers in the expanded player panel.
-   * Tot divider: right of R4 — constant regardless of column widths.
-   * R1 divider: right of Thru — shifts on mobile because R1-R4 are narrower.
-   *   mobile:  0.75 + 2.5 + 1.9*4 = 10.85rem
+   * Row padding is px-2 (0.5rem) on mobile, px-3 (0.75rem) on sm+.
+   * Tot divider: padding + Tot col width.
+   *   mobile:  0.5 + 2.5 = 3.0rem
+   *   desktop: 0.75 + 2.5 = 3.25rem
+   * R1 divider: padding + Tot + R4 + R3 + R2 + R1 widths.
+   *   mobile:  0.5 + 2.5 + 1.9*4 = 10.6rem
    *   desktop: 0.75 + 2.5 + 2.0*4 = 11.25rem
    */
-  .player-divider-r1  { right: 10.85rem; }
-  .player-divider-tot { right: 3.25rem; }
+  .player-divider-r1  { right: 10.6rem; }
+  .player-divider-tot { right: 3.0rem;  }
 
   @media (min-width: 640px) {
-    .player-divider-r1 { right: 11.25rem; }
+    .player-divider-r1  { right: 11.25rem; }
+    .player-divider-tot { right: 3.25rem;  }
   }
 }

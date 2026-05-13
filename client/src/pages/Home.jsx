@@ -212,7 +212,7 @@ export default function Home() {
   const isLive = effectiveStatus === 'in';
 
   return (
-    <div className="space-y-3 p-4">
+    <div className="space-y-3 px-2 py-4 sm:p-4">
 
       {/* Tournament title — acts as the dropdown selector */}
       <div className="relative" ref={dropdownRef}>
