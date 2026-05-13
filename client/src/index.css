@@ -26,7 +26,7 @@
    */
   .player-row-grid {
     display: grid;
-    grid-template-columns: 1.5rem 1.75rem 1fr 1.75rem 1.5rem 1.5rem 1.5rem 1.5rem 2.5rem;
+    grid-template-columns: 1.5rem 1.75rem 1fr 1.75rem 1.9rem 1.9rem 1.9rem 1.9rem 2.5rem;
     align-items: center;
     gap: 0;
   }
@@ -41,10 +41,10 @@
    * Vertical dividers in the expanded player panel.
    * Tot divider: right of R4 — constant regardless of column widths.
    * R1 divider: right of Thru — shifts on mobile because R1-R4 are narrower.
-   *   mobile:  0.75 + 2.5 + 1.5*4 = 9.25rem
+   *   mobile:  0.75 + 2.5 + 1.9*4 = 10.85rem
    *   desktop: 0.75 + 2.5 + 2.0*4 = 11.25rem
    */
-  .player-divider-r1  { right: 9.25rem;  }
+  .player-divider-r1  { right: 10.85rem; }
   .player-divider-tot { right: 3.25rem; }
 
   @media (min-width: 640px) {
