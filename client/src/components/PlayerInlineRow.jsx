@@ -93,7 +93,7 @@ export default function PlayerInlineRow({
   return (
     <div className="player-row-grid bg-pool-elevated px-2 py-1.5 sm:px-3">
       {/* Position */}
-      <span className="block text-[10px] text-pool-muted text-center">{pos}</span>
+      <span className="block text-[10px] lg:text-xs text-pool-muted text-center">{pos}</span>
 
       {/* Avatar */}
       <span className="flex items-center justify-center">
@@ -102,7 +102,7 @@ export default function PlayerInlineRow({
 
       {/* Player name + CUT badge — responsive: abbreviated on mobile, full on sm+ */}
       <span className={`flex items-center gap-1 min-w-0 pr-2${isCut ? ' opacity-50' : ''}`}>
-        <span className={`text-sm font-medium truncate ${isCut ? 'text-pool-muted' : 'text-pool-primary'}`}>
+        <span className={`text-sm lg:text-base font-medium truncate ${isCut ? 'text-pool-muted' : 'text-pool-primary'}`}>
           <span className="sm:hidden">{abbreviateName(name)}</span>
           <span className="hidden sm:inline">{name}</span>
         </span>
@@ -114,7 +114,7 @@ export default function PlayerInlineRow({
       </span>
 
       {/* Thru */}
-      <span className={`block text-[10px] text-center${isCut ? ' opacity-40 text-pool-muted' : ' text-pool-muted'}`}>
+      <span className={`block text-[10px] lg:text-sm text-center${isCut ? ' opacity-40 text-pool-muted' : ' text-pool-muted'}`}>
         {thru ?? '—'}
       </span>
 
@@ -126,7 +126,7 @@ export default function PlayerInlineRow({
         if (isCounting && hasScore) {
           return (
             <span key={i} className="flex items-center justify-center">
-              <span className="text-xs font-mono font-bold bg-pool-counting text-pool-counting-fg rounded px-1 py-0.5 leading-none">
+              <span className="text-xs lg:text-sm font-mono font-bold bg-pool-counting text-pool-counting-fg rounded px-1 py-0.5 leading-none">
                 {score}
               </span>
             </span>
@@ -136,21 +136,21 @@ export default function PlayerInlineRow({
         // Unplayed rounds for cut players — blank (badge in name cell handles labeling)
         if (!hasScore && isCut) {
           return (
-            <span key={i} className="block text-xs font-mono text-center opacity-30 text-pool-faint">
+            <span key={i} className="block text-xs lg:text-sm font-mono text-center opacity-30 text-pool-faint">
               —
             </span>
           );
         }
 
         return (
-          <span key={i} className={`block text-xs font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}`}>
+          <span key={i} className={`block text-xs lg:text-sm font-mono text-center ${hasScore ? nonCountingColor(score) : 'text-pool-faint'}`}>
             {hasScore ? score : '—'}
           </span>
         );
       })}
 
       {/* Total */}
-      <span className={`block text-sm font-mono font-bold text-right ${isCut ? 'opacity-50 ' : ''}${totalColor(total)}`}>
+      <span className={`block text-sm lg:text-base font-mono font-bold text-right ${isCut ? 'opacity-50 ' : ''}${totalColor(total)}`}>
         {formatTotal(total)}
       </span>
     </div>

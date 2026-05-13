@@ -147,15 +147,15 @@ export default function HybridTeamRow({
 
           {/* Column header row — same responsive grid as player rows */}
           <div className="player-row-grid px-2 pt-2 pb-1 sm:px-3 border-b border-pool-rim">
-            <span className="block text-[9px] text-pool-faint text-center">#</span>
-            <span className="block text-[9px] text-pool-faint text-center" />
-            <span className="block text-[9px] text-pool-faint">Player</span>
-            <span className="block text-[9px] text-pool-faint text-center">Thru</span>
-            <span className="block text-[9px] text-pool-faint text-center">R1</span>
-            <span className="block text-[9px] text-pool-faint text-center">R2</span>
-            <span className="block text-[9px] text-pool-faint text-center">R3</span>
-            <span className="block text-[9px] text-pool-faint text-center">R4</span>
-            <span className="block text-[9px] text-pool-faint text-right">Tot</span>
+            <span className="block text-[9px] lg:text-xs text-pool-faint text-center">#</span>
+            <span className="block text-[9px] lg:text-xs text-pool-faint text-center" />
+            <span className="block text-[9px] lg:text-xs text-pool-faint">Player</span>
+            <span className="block text-[9px] lg:text-xs text-pool-faint text-center">Thru</span>
+            <span className="block text-[9px] lg:text-xs text-pool-faint text-center">R1</span>
+            <span className="block text-[9px] lg:text-xs text-pool-faint text-center">R2</span>
+            <span className="block text-[9px] lg:text-xs text-pool-faint text-center">R3</span>
+            <span className="block text-[9px] lg:text-xs text-pool-faint text-center">R4</span>
+            <span className="block text-[9px] lg:text-xs text-pool-faint text-right">Tot</span>
           </div>
           {children}
         </div>
