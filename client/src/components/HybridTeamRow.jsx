@@ -1,10 +1,6 @@
-import { PLAYER_GRID_COLS } from './PlayerInlineRow.jsx';
-
-// Absolute-positioned divider lines on the expanded container.
-// Calculated from the RIGHT edge: right-padding(0.75rem) + fixed column widths.
-// Tot divider  (between R4 and Tot):  0.75 + 2.5 = 3.25rem
-// R1 divider   (between Thru and R1): 0.75 + 2.5 + 2 + 2 + 2 + 2 = 11.25rem
-const DIVIDER_STYLE = {
+// Divider positions are defined in index.css as .player-divider-r1 / .player-divider-tot
+// (responsive — right offset shifts on mobile because R1-R4 columns are narrower).
+const DIVIDER_BASE = {
   position: 'absolute',
   top: 0,
   bottom: 0,
@@ -145,15 +141,12 @@ export default function HybridTeamRow({
 
       {isExpanded && (
         <div className="bg-pool-elevated border-t border-pool-rim" style={{ position: 'relative' }}>
-          {/* Continuous vertical dividers */}
-          <div style={{ ...DIVIDER_STYLE, right: '3.25rem' }} />
-          <div style={{ ...DIVIDER_STYLE, right: '11.25rem' }} />
+          {/* Continuous vertical dividers — positions defined in index.css (responsive) */}
+          <div className="player-divider-tot" style={DIVIDER_BASE} />
+          <div className="player-divider-r1"  style={DIVIDER_BASE} />
 
-          {/* Column header row — matches PLAYER_GRID_COLS */}
-          <div
-            className="px-3 pt-2 pb-1 border-b border-pool-rim"
-            style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, gap: '0' }}
-          >
+          {/* Column header row — same responsive grid as player rows */}
+          <div className="player-row-grid px-3 pt-2 pb-1 border-b border-pool-rim">
             <span className="block text-[9px] text-pool-faint text-center">#</span>
             <span className="block text-[9px] text-pool-faint text-center" />
             <span className="block text-[9px] text-pool-faint">Player</span>

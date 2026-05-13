@@ -1,11 +1,22 @@
 import { useState } from 'react';
 
-// Shared grid layout — imported by HybridTeamRow for the column header row.
-// Dividers are NOT in this grid; they are absolutely positioned on the container in HybridTeamRow.
+// Grid layout is defined in index.css as .player-row-grid (responsive via media query).
 // Columns: pos | avatar | name | thru | R1 | R2 | R3 | R4 | Tot
-export const PLAYER_GRID_COLS = '1.5rem 1.75rem 1fr 1.75rem 2rem 2rem 2rem 2rem 2.5rem';
+// Mobile: R1-R4 = 1.5rem. Desktop (sm:): R1-R4 = 2rem.
+export const PLAYER_GRID_CLASS = 'player-row-grid';
 
 const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF', 'W/D']);
+
+/**
+ * "Cameron Young" → "C. Young" for mobile display.
+ * Takes first letter of first name + last word of full name.
+ */
+function abbreviateName(name) {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return name;
+  return `${parts[0][0]}. ${parts[parts.length - 1]}`;
+}
 
 function parseScore(val) {
   if (val === null || val === undefined || val === '') return null;
@@ -80,10 +91,7 @@ export default function PlayerInlineRow({
   const cutLabel = CUT_STATUSES.has(overallStatus?.toUpperCase()) ? overallStatus.toUpperCase() : 'CUT';
 
   return (
-    <div
-      className="bg-pool-elevated px-3 py-1.5"
-      style={{ display: 'grid', gridTemplateColumns: PLAYER_GRID_COLS, alignItems: 'center', gap: '0' }}
-    >
+    <div className="player-row-grid bg-pool-elevated px-3 py-1.5">
       {/* Position */}
       <span className="block text-[10px] text-pool-muted text-center">{pos}</span>
 
@@ -92,10 +100,11 @@ export default function PlayerInlineRow({
         <PlayerAvatar espnId={espnId} name={name} />
       </span>
 
-      {/* Player name + CUT badge */}
+      {/* Player name + CUT badge — responsive: abbreviated on mobile, full on sm+ */}
       <span className={`flex items-center gap-1 min-w-0 pr-2${isCut ? ' opacity-50' : ''}`}>
         <span className={`text-sm font-medium truncate ${isCut ? 'text-pool-muted' : 'text-pool-primary'}`}>
-          {name}
+          <span className="sm:hidden">{abbreviateName(name)}</span>
+          <span className="hidden sm:inline">{name}</span>
         </span>
         {isCut && (
           <span className="shrink-0 text-[7px] font-bold px-1 py-0.5 rounded bg-red-900/70 text-red-300 leading-none uppercase tracking-wide">

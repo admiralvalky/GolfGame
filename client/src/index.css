@@ -17,4 +17,37 @@
     0%   { background-color: rgba(74, 222, 128, 0.10); }
     100% { background-color: transparent; }
   }
+
+  /*
+   * Player row grid — responsive column widths.
+   * Columns: pos | avatar | name | thru | R1 | R2 | R3 | R4 | Tot
+   * Mobile: R1-R4 tightened to 1.5rem each (saves 2rem, gives name more room).
+   * Desktop (sm: 640px+): R1-R4 at full 2rem each.
+   */
+  .player-row-grid {
+    display: grid;
+    grid-template-columns: 1.5rem 1.75rem 1fr 1.75rem 1.5rem 1.5rem 1.5rem 1.5rem 2.5rem;
+    align-items: center;
+    gap: 0;
+  }
+
+  @media (min-width: 640px) {
+    .player-row-grid {
+      grid-template-columns: 1.5rem 1.75rem 1fr 1.75rem 2rem 2rem 2rem 2rem 2.5rem;
+    }
+  }
+
+  /*
+   * Vertical dividers in the expanded player panel.
+   * Tot divider: right of R4 — constant regardless of column widths.
+   * R1 divider: right of Thru — shifts on mobile because R1-R4 are narrower.
+   *   mobile:  0.75 + 2.5 + 1.5*4 = 9.25rem
+   *   desktop: 0.75 + 2.5 + 2.0*4 = 11.25rem
+   */
+  .player-divider-r1  { right: 9.25rem;  }
+  .player-divider-tot { right: 3.25rem; }
+
+  @media (min-width: 640px) {
+    .player-divider-r1 { right: 11.25rem; }
+  }
 }
