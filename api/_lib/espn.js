@@ -112,6 +112,15 @@ export async function fetchRoundsFromCoreApi(espnTournamentId, playerIds) {
       })
     );
   }
+  // Fail loudly on a massive partial-batch failure (e.g. ESPN slow, most
+  // linescore fetches timed out). Returning a thin map silently would let the
+  // caller treat half a field as complete and cache it — throw so it falls
+  // through to the cache/last-resort path instead.
+  if (allCompetitors.length > 0 && roundsMap.size < 0.5 * allCompetitors.length) {
+    throw new Error(
+      `[scores] Core API partial batch for ${espnTournamentId}: only ${roundsMap.size}/${allCompetitors.length} players fetched`
+    );
+  }
   return roundsMap;
 }
 
@@ -152,6 +161,14 @@ export async function fetchCompetitorsFromCoreApi(espnTournamentId) {
         });
       } catch (_) { /* skip individual player failures */ }
     }));
+  }
+
+  // Fail loudly on a massive partial-batch failure rather than returning a
+  // thin competitor list that would be treated as the full field.
+  if (items.length > 0 && rawData.size < 0.5 * items.length) {
+    throw new Error(
+      `[scores] Core API partial batch for ${espnTournamentId}: only ${rawData.size}/${items.length} competitors fetched`
+    );
   }
 
   // Determine max round (for CUT detection).
@@ -215,21 +232,84 @@ function computeRanks(scoreMap) {
   }
 }
 
-async function persistScoreCache(supabase, espnTournamentId, scoreMap) {
+/** Highest round number (1-4) present in a rounds object, or 0 if none. */
+export function maxRoundKey(roundsObj) {
+  let m = 0;
+  for (const k of Object.keys(roundsObj ?? {})) {
+    const n = parseInt(k, 10);
+    if (!isNaN(n) && roundsObj[k] != null && n > m) m = n;
+  }
+  return m;
+}
+
+/**
+ * Persist scores to the DB cache WITHOUT losing previously-cached data.
+ *
+ * Two safeguards protect against a transient/partial ESPN response corrupting
+ * a good cache:
+ *   1. Regression guard — refuse the whole write if the incoming field looks
+ *      thinner than what's already cached (far fewer players, or a lower max
+ *      round). A single bad fetch can't wipe out good data.
+ *   2. Per-player round merge — a round already in the cache is never dropped
+ *      just because this response omitted it. New values still win per round
+ *      (so ESPN corrections apply); only deletions are prevented.
+ *
+ * Tradeoff: a round, once cached for a player, is effectively permanent. A rare
+ * ESPN retroactive deletion (e.g. a post-hoc DQ wiping a round) won't shrink it.
+ * Acceptable for integrity.
+ */
+export async function persistScoreCache(supabase, espnTournamentId, scoreMap) {
   try {
+    // Read existing cache to merge against and to measure regression.
+    const { data: existingRows } = await supabase
+      .from('cached_player_scores')
+      .select('player_espn_id, rounds_json')
+      .eq('espn_tournament_id', espnTournamentId);
+    const existingByPlayer = new Map();
+    for (const row of existingRows ?? []) {
+      existingByPlayer.set(row.player_espn_id, row.rounds_json ?? {});
+    }
+
+    // Only players with at least one real round are cacheable.
+    const incoming = [...scoreMap].filter(
+      ([, data]) => Object.keys(data.rounds ?? {}).length > 0
+    );
+
+    const existingCount = existingByPlayer.size;
+    const newCount = incoming.length;
+    let existingMaxRound = 0;
+    for (const r of existingByPlayer.values()) {
+      existingMaxRound = Math.max(existingMaxRound, maxRoundKey(r));
+    }
+    let newMaxRound = 0;
+    for (const [, data] of incoming) {
+      newMaxRound = Math.max(newMaxRound, maxRoundKey(data.rounds));
+    }
+
+    // Regression guard.
+    if (existingCount > 0 && (newCount < 0.5 * existingCount || newMaxRound < existingMaxRound)) {
+      console.warn(
+        `[scores] regression-skip: refusing cache write for ${espnTournamentId} ` +
+        `(incoming ${newCount}p/R${newMaxRound} vs cached ${existingCount}p/R${existingMaxRound})`
+      );
+      return;
+    }
+
     const now = new Date().toISOString();
-    const rows = [...scoreMap]
-      .filter(([, data]) => Object.keys(data.rounds ?? {}).length > 0)
-      .map(([playerId, data]) => ({
+    const rows = incoming.map(([playerId, data]) => {
+      // Merge: keep any cached round this response omitted; new values win per key.
+      const mergedRounds = { ...(existingByPlayer.get(playerId) ?? {}), ...data.rounds };
+      return {
         espn_tournament_id: espnTournamentId,
         player_espn_id: playerId,
-        rounds_json: data.rounds,
+        rounds_json: mergedRounds,
         thru: data.thru != null ? String(data.thru) : null,
         overall_status: data.overallStatus ?? null,
         total_score: data.totalScore ?? null,
         rank: data.rank ?? null,
         saved_at: now,
-      }));
+      };
+    });
     if (rows.length > 0) {
       await supabase
         .from('cached_player_scores')
@@ -266,9 +346,17 @@ function buildScoreMapFromCache(rows) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} espnTournamentId
  * @param {'upcoming'|'in'|'post'|''} status - effective tournament status
- * @returns {Promise<{ scoreMap: Map<string, object>, venue: { course: string|null, par: number|null } }>}
+ * @returns {Promise<{ scoreMap: Map<string, object>, venue: { course: string|null, par: number|null }, source: string, competitorCount: number, maxRound: number }>}
  */
 export async function fetchPlayerScores(supabase, espnTournamentId, status = '') {
+  // Wrap every return with provenance metadata so callers (and the network tab)
+  // can see where the data came from and whether it looks complete.
+  const result = (scoreMap, venue, source) => {
+    let maxRound = 0;
+    for (const d of scoreMap.values()) maxRound = Math.max(maxRound, maxRoundKey(d.rounds));
+    return { scoreMap, venue, source, competitorCount: scoreMap.size, maxRound };
+  };
+
   // Completed tournaments: serve from cache — ESPN clears linescores after events end.
   // skipCache is set to true when the post-tournament cache is found but stale so the
   // second cache lookup in the competitors===0 branch doesn't re-serve the same bad data.
@@ -282,21 +370,20 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
       .eq('espn_tournament_id', espnTournamentId);
     postCachedRows = cached ?? null;
     if (cached && cached.length > 0) {
-      // Validate cache completeness. If no player has R3/R4 data the cache was likely
-      // written mid-tournament (or from the wrong event) and needs to be refreshed.
-      // Players who made the cut always have R3+ data in a completed tournament.
-      const hasLaterRoundData = cached.some(row => {
-        const r = row.rounds_json ?? {};
-        return r['3'] != null || r['4'] != null;
-      });
-      if (hasLaterRoundData) {
-        console.log(`Serving post-tournament scores from cache for ${espnTournamentId}`);
-        return { scoreMap: buildScoreMapFromCache(cached), venue: { course: null, par: null } };
+      // Validate cache completeness. A completed-event cache should have R4 data for
+      // the players who made the cut; if it only goes to R3 it was likely written
+      // mid-tournament (or from the wrong event) and we try a fresh ESPN pull first.
+      // Genuine 54-hole events (no R4) will always refresh then serve cache via the
+      // last-resort branch below — correct, just mildly less efficient.
+      const hasFinalRoundData = cached.some(row => (row.rounds_json ?? {})['4'] != null);
+      if (hasFinalRoundData) {
+        console.log(`[scores] serving post-tournament cache for ${espnTournamentId}`);
+        return result(buildScoreMapFromCache(cached), { course: null, par: null }, 'cache');
       }
-      console.warn(`Post-tournament cache for ${espnTournamentId} has no R3/R4 data — trying ESPN refresh before using cache`);
+      console.warn(`[scores] post-tournament cache for ${espnTournamentId} has no R4 data — trying ESPN refresh before using cache`);
       skipCache = true; // prevent the fallback path from re-serving this same stale data
     } else {
-      console.warn(`No cache for completed tournament ${espnTournamentId}, falling back to ESPN`);
+      console.warn(`[scores] no cache for completed tournament ${espnTournamentId}, falling back to ESPN`);
     }
   }
 
@@ -336,13 +423,13 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
         .eq('espn_tournament_id', espnTournamentId);
 
       if (rows && rows.length > 0) {
-        console.log(`Using DB-cached scores for ESPN tournament ${espnTournamentId}`);
-        return { scoreMap: buildScoreMapFromCache(rows), venue };
+        console.log(`[scores] using DB-cached scores for ESPN tournament ${espnTournamentId}`);
+        return result(buildScoreMapFromCache(rows), venue, 'cache');
       }
     }
 
     // Last resort: Core API retains historical data indefinitely.
-    console.warn(`No scoreboard data for ${espnTournamentId}, attempting Core API fallback`);
+    console.warn(`[scores] no scoreboard data for ${espnTournamentId}, attempting Core API fallback`);
     try {
       const coreRounds = await fetchRoundsFromCoreApi(espnTournamentId, []);
       if (coreRounds.size > 0) {
@@ -368,15 +455,15 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
         }
         computeRanks(scoreMap);
         await persistScoreCache(supabase, espnTournamentId, scoreMap);
-        return { scoreMap, venue };
+        return result(scoreMap, venue, 'core');
       }
     } catch (coreErr) {
-      console.error(`Core API fallback failed for ${espnTournamentId}:`, coreErr.message);
+      console.error(`[scores] Core API fallback failed for ${espnTournamentId}:`, coreErr.message);
     }
 
     if (postCachedRows && postCachedRows.length > 0) {
-      console.warn(`Using existing post-tournament cache for ${espnTournamentId} after ESPN/Core fallback failed`);
-      return { scoreMap: buildScoreMapFromCache(postCachedRows), venue };
+      console.warn(`[scores] using existing post-tournament cache for ${espnTournamentId} after ESPN/Core fallback failed`);
+      return result(buildScoreMapFromCache(postCachedRows), venue, 'cache-stale');
     }
 
     throw new Error(`No score data available for ESPN tournament ${espnTournamentId}`);
@@ -412,18 +499,25 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     });
   }
 
-  // If no round data, fall back to core API
-  const hasRoundData = [...scoreMap.values()].some(d => Object.keys(d.rounds).length > 0);
-  if (!hasRoundData) {
-    console.log(`Scoreboard API has no round data for ${espnTournamentId} — fetching from core API`);
+  // Backfill from the Core API when the Site response looks THIN, not only when
+  // it's totally empty. ESPN sometimes returns the field with most linescores
+  // missing (slow/partial); accepting that as complete would cache a thinned
+  // field. Trigger backfill when fewer than half the competitors have any round.
+  let source = 'site';
+  const total = scoreMap.size;
+  const withRounds = [...scoreMap.values()].filter(d => Object.keys(d.rounds).length > 0).length;
+  const completeFraction = total > 0 ? withRounds / total : 0;
+  if (completeFraction < 0.5) {
+    console.log(`[scores] thin Site response for ${espnTournamentId} (${withRounds}/${total} have rounds) — backfilling from Core API`);
     try {
       const coreRounds = await fetchRoundsFromCoreApi(espnTournamentId, [...scoreMap.keys()]);
       for (const [id, rounds] of coreRounds) {
         if (!scoreMap.has(id)) continue;
         const entry = scoreMap.get(id);
-        entry.rounds = rounds;
+        // Merge rather than replace so a Site round isn't dropped if Core omits it.
+        entry.rounds = { ...entry.rounds, ...rounds };
 
-        const roundNums = Object.values(rounds).map(s => {
+        const roundNums = Object.values(entry.rounds).map(s => {
           const t = String(s).trim().toUpperCase();
           if (t === 'E') return 0;
           const n = parseInt(t, 10);
@@ -434,19 +528,19 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
           entry.totalScore = tot === 0 ? 'E' : tot > 0 ? `+${tot}` : String(tot);
         }
 
-        if (Object.keys(rounds).length > 0) entry.thru = 'F';
+        if (Object.keys(entry.rounds).length > 0) entry.thru = 'F';
       }
+      source = 'site+core';
     } catch (err) {
-      console.error(`Core API fallback failed for ${espnTournamentId}:`, err.message);
+      console.error(`[scores] Core API backfill failed for ${espnTournamentId}:`, err.message);
     }
   }
 
   // Third pass: compute display ranks
   computeRanks(scoreMap);
 
-  // Persist to Supabase — only rows with actual round data so we never
-  // overwrite good historical scores with empty ESPN responses.
+  // Persist to Supabase — round-preserving + regression-guarded (see persistScoreCache).
   await persistScoreCache(supabase, espnTournamentId, scoreMap);
 
-  return { scoreMap, venue };
+  return result(scoreMap, venue, source);
 }

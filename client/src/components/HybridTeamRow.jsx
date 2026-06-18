@@ -48,20 +48,26 @@ function isNumericLike(val) {
  * transitions (e.g. null → -3, or 'E' → non-'E').
  */
 function AnimatedScore({ value, className }) {
+  const toNumeric = (v) => (v === 'E' ? 0 : (typeof v === 'number' ? v : null));
   const [displayed, setDisplayed] = useState(value);
-  const prevRef = useRef(value);
+  // The number currently ON SCREEN — used as the animation's starting point so
+  // an interrupt (a new value mid-tween) continues from where it visually is,
+  // not from a pre-advanced baseline. That was the cause of the score "jump".
+  const displayedNumRef = useRef(toNumeric(value));
   const rafRef = useRef(null);
 
   useEffect(() => {
-    const from = prevRef.current;
     const to = value;
-    if (from === to) return;
-    prevRef.current = to;
+    const toNum = toNumeric(to);
+    const fromNum = displayedNumRef.current;
 
-    // Resolve E → 0 for interpolation; null/undefined → skip animation
-    const fromNum = from === 'E' ? 0 : (typeof from === 'number' ? from : null);
-    const toNum   = to   === 'E' ? 0 : (typeof to   === 'number' ? to   : null);
-    if (fromNum === null || toNum === null) { setDisplayed(to); return; }
+    // Non-numeric transition (null↔score) or no change → snap instantly.
+    if (fromNum === null || toNum === null || fromNum === toNum) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      displayedNumRef.current = toNum;
+      setDisplayed(to);
+      return;
+    }
 
     const duration = 600;
     const start = performance.now();
@@ -70,10 +76,12 @@ function AnimatedScore({ value, className }) {
       const t = Math.min((now - start) / duration, 1);
       const eased = 1 - Math.pow(1 - t, 3); // cubic ease-out
       const cur = Math.round(fromNum + (toNum - fromNum) * eased);
+      displayedNumRef.current = cur;
       setDisplayed(cur);
       if (t < 1) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
+        displayedNumRef.current = toNum;
         setDisplayed(to); // snap to exact final value
       }
     }

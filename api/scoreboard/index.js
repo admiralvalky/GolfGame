@@ -43,10 +43,16 @@ export default withHandler(async function handler(req, res) {
 
   let playerScores;
   let venue = { course: null, par: null };
+  let scoreMeta = { source: null, competitorCount: 0, maxRound: 0 };
   try {
     const result = await fetchPlayerScores(supabase, effectiveTournament.espn_tournament_id, effectiveTournament.status);
     playerScores = result.scoreMap;
     venue = result.venue ?? { course: null, par: null };
+    scoreMeta = {
+      source: result.source ?? null,
+      competitorCount: result.competitorCount ?? playerScores.size,
+      maxRound: result.maxRound ?? 0,
+    };
   } catch (err) {
     console.error('Failed to fetch ESPN scores:', err.message);
     return res.status(502).json({ error: 'Failed to fetch live scores from ESPN' });
@@ -92,9 +98,13 @@ export default withHandler(async function handler(req, res) {
     results[i].rank = i + 1;
   }
 
+  const lastUpdated = new Date().toISOString();
   res.json({
     tournament: { ...effectiveTournament, course: venue.course, par: venue.par },
     teams: results,
-    lastUpdated: new Date().toISOString(),
+    lastUpdated,
+    // Data provenance — inspect in the network tab during a live event to see
+    // where scores came from (cache/site/core) and whether the field looks full.
+    _meta: { ...scoreMeta, lastUpdated },
   });
 });
