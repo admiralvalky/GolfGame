@@ -138,8 +138,11 @@ export default function Home() {
   useEffect(() => {
     getTournaments().then(({ tournaments: list }) => {
       setTournaments(list);
-      const active = list.find(t => t.status === 'in');
-      setSelectedId((active ?? list[0])?.id ?? null);
+      // List is sorted by start_date descending → list[0] is the most recent.
+      // Prefer a live tournament if one exists (the first/most-recent 'in'),
+      // otherwise default to the most recent tournament overall.
+      const liveMostRecent = list.find(t => t.status === 'in');
+      setSelectedId((liveMostRecent ?? list[0])?.id ?? null);
     });
   }, []);
 
