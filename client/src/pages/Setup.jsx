@@ -17,7 +17,7 @@ const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
 
 function tournamentDisplayName(t) {
   if (!t) return '—';
-  const year = t.start_date ? new Date(t.start_date).getFullYear() : null;
+  const year = t.start_date ? new Date(t.start_date).getUTCFullYear() : null;
   const suffix = year ? ` '${String(year).slice(2)}` : '';
   return `${t.name}${suffix}`;
 }

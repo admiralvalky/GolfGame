@@ -1,18 +1,21 @@
+// Dates are stored as T04:00Z (midnight US/Eastern) — the intended calendar day
+// is the UTC date. Render in UTC so viewers west of Eastern don't see the prior
+// day (e.g. "2026-06-18T04:00Z" must show Jun 18, not Jun 17 in Pacific time).
 export function formatTournamentDates(t) {
   if (!t?.start_date) return '';
   const start = new Date(t.start_date);
-  const year = start.getFullYear();
-  const opts = { month: 'short', day: 'numeric' };
+  const year = start.getUTCFullYear();
+  const opts = { month: 'short', day: 'numeric', timeZone: 'UTC' };
   if (t.end_date) {
     const end = new Date(t.end_date);
-    const sameMonth = start.getMonth() === end.getMonth();
+    const sameMonth = start.getUTCMonth() === end.getUTCMonth();
     return sameMonth
-      ? `${start.toLocaleDateString('en-US', opts)}–${end.getDate()}, ${year}`
+      ? `${start.toLocaleDateString('en-US', opts)}–${end.getUTCDate()}, ${year}`
       : `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}, ${year}`;
   }
   const end = new Date(start);
-  end.setDate(end.getDate() + 3);
-  return `${start.toLocaleDateString('en-US', opts)}–${end.getDate()}, ${year}`;
+  end.setUTCDate(end.getUTCDate() + 3);
+  return `${start.toLocaleDateString('en-US', opts)}–${end.getUTCDate()}, ${year}`;
 }
 
 export function statusLabel(status) {

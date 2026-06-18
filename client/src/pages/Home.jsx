@@ -16,7 +16,7 @@ const CUT_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF', 'W/D']);
 
 function tournamentDisplayName(t) {
   if (!t) return '—';
-  const year = t.start_date ? new Date(t.start_date).getFullYear() : null;
+  const year = t.start_date ? new Date(t.start_date).getUTCFullYear() : null;
   const suffix = year ? ` '${String(year).slice(2)}` : '';
   return `${t.name}${suffix}`;
 }
