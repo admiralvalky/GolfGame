@@ -499,16 +499,22 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     });
   }
 
-  // Backfill from the Core API when the Site response looks THIN, not only when
-  // it's totally empty. ESPN sometimes returns the field with most linescores
-  // missing (slow/partial); accepting that as complete would cache a thinned
-  // field. Trigger backfill when fewer than half the competitors have any round.
+  // Maybe backfill missing rounds from the Core API. The trigger DEPENDS on status:
+  //   - 'post' (completed event): a thin response is a real problem — ESPN clears
+  //     linescores after events end — so backfill when <50% of the field has rounds.
+  //   - live/'in': a thin response is EXPECTED early/mid-round (the morning wave
+  //     hasn't posted yet). Backfilling here would be wrong, and stamping thru='F'
+  //     over in-progress players is exactly the bug that made everyone read "F" on
+  //     day 1. So only backfill when the Site gave essentially NO round data at all.
+  // The Core API is round-level and carries no live "thru", so we only treat its
+  // rounds as final ('F') for completed events — never override a live Site thru.
   let source = 'site';
   const total = scoreMap.size;
   const withRounds = [...scoreMap.values()].filter(d => Object.keys(d.rounds).length > 0).length;
   const completeFraction = total > 0 ? withRounds / total : 0;
-  if (completeFraction < 0.5) {
-    console.log(`[scores] thin Site response for ${espnTournamentId} (${withRounds}/${total} have rounds) — backfilling from Core API`);
+  const deficient = status === 'post' ? completeFraction < 0.5 : withRounds === 0;
+  if (deficient) {
+    console.log(`[scores] deficient Site response for ${espnTournamentId} (${withRounds}/${total} have rounds, status=${status || 'n/a'}) — backfilling from Core API`);
     try {
       const coreRounds = await fetchRoundsFromCoreApi(espnTournamentId, [...scoreMap.keys()]);
       for (const [id, rounds] of coreRounds) {
@@ -528,7 +534,9 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
           entry.totalScore = tot === 0 ? 'E' : tot > 0 ? `+${tot}` : String(tot);
         }
 
-        if (Object.keys(entry.rounds).length > 0) entry.thru = 'F';
+        // Core rounds are only "final" for completed events. For live, leave the
+        // Site thru untouched (a number, or null → UI shows "—").
+        if (status === 'post' && Object.keys(entry.rounds).length > 0) entry.thru = 'F';
       }
       source = 'site+core';
     } catch (err) {
