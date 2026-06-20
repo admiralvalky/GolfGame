@@ -23,7 +23,13 @@ export async function espnFetch(url) {
   return res.json();
 }
 
-export function deriveOverallStatus(c, linescores, fieldMaxScheduled) {
+export function deriveOverallStatus(c) {
+  // Trust ESPN's explicit status flag when present (Core API competitor status
+  // carries this; the Site scoreboard usually leaves it null). CUT/WD/DQ/MDF can
+  // NOT be inferred from a single player's linescores — ESPN gives both a
+  // missed-cut player and a made-the-cut-but-not-teed-off player the same shape
+  // (R1+R2 complete, an empty R3 entry). Field-level cut inference is done
+  // separately in applyCutInference(), which has every player's totals.
   const desc = (c.status?.type?.description ?? '').toUpperCase();
   const name = (c.status?.type?.name ?? '').toUpperCase();
   if (desc.includes('CUT') || name.includes('CUT')) return 'CUT';
@@ -31,26 +37,75 @@ export function deriveOverallStatus(c, linescores, fieldMaxScheduled) {
   if (desc === 'DQ' || name.includes('DQ')) return 'DQ';
   if (desc === 'MDF' || name.includes('MDF')) return 'MDF';
 
-  if (linescores.length > 0) {
-    // Cut detection by SCHEDULED rounds, not played rounds. ESPN pre-creates a
-    // linescore ENTRY (0 holes) for every player scheduled to play a round; a
-    // player who missed the cut gets NO entry for the rounds the field advances
-    // to. So a player is cut iff their highest scheduled round is behind the
-    // field's. Round count alone is ambiguous mid-event — a player who MADE the
-    // cut but hasn't teed off R3 has the same 2 played rounds as one who missed
-    // it. (`fieldMaxScheduled` is the max period entry across the whole field.)
-    const playerScheduledMax = Math.max(...linescores.map(ls => ls.period));
-    const roundsWithData = linescores.filter(ls => (ls.linescores ?? []).length > 0);
-    const playerPlayedMax = roundsWithData.length ? Math.max(...roundsWithData.map(ls => ls.period)) : 0;
-    const allPlayedComplete = roundsWithData.length > 0 && roundsWithData.every(ls => ls.linescores.length >= 18);
+  return String(c.score ?? '').trim().toUpperCase();
+}
 
-    if (allPlayedComplete && playerScheduledMax < fieldMaxScheduled) {
-      if (fieldMaxScheduled >= 3 && playerPlayedMax <= 2) return 'CUT';
-      if (fieldMaxScheduled >= 4 && playerPlayedMax === 3) return 'MDF';
+const CUTLIKE_STATUSES = new Set(['CUT', 'WD', 'DQ', 'MDF']);
+
+/**
+ * Infer missed-cut (and MDF) status across the whole field, with no extra API
+ * calls. ESPN's Site scoreboard does not expose a per-player cut flag, and a
+ * missed-cut player is indistinguishable from a made-the-cut player who hasn't
+ * teed off yet by looking at one player's data alone.
+ *
+ * Trick: in golf, the players who just made the cut tee off FIRST on the
+ * weekend, so the worst 36-hole total among players who have ANY round-3 hole
+ * data is a reliable estimate of the cut line. Anyone with no round-3 data whose
+ * 36-hole total is worse than that line missed the cut. Same logic for the
+ * (rare) 54-hole MDF cut using round-4 starters. Self-calibrating — no hardcoded
+ * "top 60/65/70" rule, which varies by tournament.
+ *
+ * Brief imperfection only at the very start of R3/R4 before any backmarker has
+ * teed off; it errs toward NOT marking a player cut.
+ */
+export function applyCutInference(scoreMap) {
+  const num = (v) => {
+    if (v == null) return null;
+    const t = String(v).trim().toUpperCase();
+    if (t === 'E') return 0;
+    const n = parseInt(t, 10);
+    return isNaN(n) ? null : n;
+  };
+  const sumRounds = (rounds, which) => {
+    let s = 0;
+    for (const r of which) {
+      const n = num(rounds?.[r]);
+      if (n === null) return null;
+      s += n;
+    }
+    return s;
+  };
+
+  const entries = [...scoreMap.values()];
+  // Cut line after R2: worst 36-hole total among players who have R3 hole data.
+  let cutLine = null;
+  // MDF line after R3: worst 54-hole total among players who have R4 hole data.
+  let mdfLine = null;
+  for (const e of entries) {
+    if (e.rounds?.[3] != null) {
+      const t36 = sumRounds(e.rounds, [1, 2]);
+      if (t36 !== null) cutLine = cutLine === null ? t36 : Math.max(cutLine, t36);
+    }
+    if (e.rounds?.[4] != null) {
+      const t54 = sumRounds(e.rounds, [1, 2, 3]);
+      if (t54 !== null) mdfLine = mdfLine === null ? t54 : Math.max(mdfLine, t54);
     }
   }
 
-  return String(c.score ?? '').trim().toUpperCase();
+  for (const e of entries) {
+    if (CUTLIKE_STATUSES.has((e.overallStatus ?? '').toUpperCase())) continue; // already flagged by ESPN
+    const hasR3 = e.rounds?.[3] != null;
+    const hasR4 = e.rounds?.[4] != null;
+
+    if (cutLine !== null && !hasR3) {
+      const t36 = sumRounds(e.rounds, [1, 2]);
+      if (t36 !== null && t36 > cutLine) { e.overallStatus = 'CUT'; continue; }
+    }
+    if (mdfLine !== null && hasR3 && !hasR4) {
+      const t54 = sumRounds(e.rounds, [1, 2, 3]);
+      if (t54 !== null && t54 > mdfLine) { e.overallStatus = 'MDF'; continue; }
+    }
+  }
 }
 
 export function extractThru(c, linescores) {
@@ -473,27 +528,13 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     throw new Error(`No score data available for ESPN tournament ${espnTournamentId}`);
   }
 
-  // First pass: determine the field's max SCHEDULED round (any entry, even 0
-  // holes). ESPN creates a period entry for every player scheduled to play that
-  // round but not for players who missed the cut — so this is how cut detection
-  // tells "made the cut, hasn't teed off" from "cut" (both have the same
-  // played-round count). Used only by deriveOverallStatus.
-  let fieldMaxScheduled = 0;
-  for (const c of competitors) {
-    for (const ls of c.linescores ?? []) {
-      if (ls.period > fieldMaxScheduled) fieldMaxScheduled = ls.period;
-    }
-  }
-
-  // Second pass: build scoreMap
+  // Build scoreMap — only store a round total if the period has actual hole data.
+  // ESPN sets displayValue="-" on pre-created empty future-round entries.
   const scoreMap = new Map();
   for (const c of competitors) {
     const linescores = c.linescores ?? [];
     const rounds = {};
     for (const ls of linescores) {
-      // Only store a round total if the period has actual hole data.
-      // ESPN sets displayValue="-" on pre-created empty future-round entries,
-      // which would make hasScore=true and suppress the CUT label in the UI.
       if (ls.period && ls.displayValue != null && ls.displayValue.trim() !== '' && (ls.linescores ?? []).length > 0) {
         rounds[ls.period] = ls.displayValue.trim();
       }
@@ -501,10 +542,13 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     scoreMap.set(c.id, {
       rounds,
       thru: extractThru(c, linescores),
-      overallStatus: deriveOverallStatus(c, linescores, fieldMaxScheduled),
+      overallStatus: deriveOverallStatus(c),
       totalScore: String(c.score ?? '').trim(),
     });
   }
+
+  // Field-level cut/MDF inference (no extra API calls — see applyCutInference).
+  applyCutInference(scoreMap);
 
   // Maybe backfill missing rounds from the Core API. The trigger DEPENDS on status:
   //   - 'post' (completed event): a thin response is a real problem — ESPN clears
