@@ -23,7 +23,7 @@ export async function espnFetch(url) {
   return res.json();
 }
 
-export function deriveOverallStatus(c, linescores, maxRound) {
+export function deriveOverallStatus(c, linescores, fieldMaxScheduled) {
   const desc = (c.status?.type?.description ?? '').toUpperCase();
   const name = (c.status?.type?.name ?? '').toUpperCase();
   if (desc.includes('CUT') || name.includes('CUT')) return 'CUT';
@@ -32,17 +32,21 @@ export function deriveOverallStatus(c, linescores, maxRound) {
   if (desc === 'MDF' || name.includes('MDF')) return 'MDF';
 
   if (linescores.length > 0) {
-    // Ignore pre-created empty rounds (same fix as extractThru) — ESPN adds a
-    // period N+1 entry with 0 holes for all players before that round starts,
-    // including players who were cut and will never play it.
+    // Cut detection by SCHEDULED rounds, not played rounds. ESPN pre-creates a
+    // linescore ENTRY (0 holes) for every player scheduled to play a round; a
+    // player who missed the cut gets NO entry for the rounds the field advances
+    // to. So a player is cut iff their highest scheduled round is behind the
+    // field's. Round count alone is ambiguous mid-event — a player who MADE the
+    // cut but hasn't teed off R3 has the same 2 played rounds as one who missed
+    // it. (`fieldMaxScheduled` is the max period entry across the whole field.)
+    const playerScheduledMax = Math.max(...linescores.map(ls => ls.period));
     const roundsWithData = linescores.filter(ls => (ls.linescores ?? []).length > 0);
-    if (roundsWithData.length > 0) {
-      const playerMaxRound = Math.max(...roundsWithData.map(ls => ls.period));
-      const allRoundsComplete = roundsWithData.every(ls => ls.linescores.length >= 18);
-      if (allRoundsComplete) {
-        if (maxRound >= 3 && playerMaxRound <= 2) return 'CUT';
-        if (maxRound >= 4 && playerMaxRound === 3) return 'MDF';
-      }
+    const playerPlayedMax = roundsWithData.length ? Math.max(...roundsWithData.map(ls => ls.period)) : 0;
+    const allPlayedComplete = roundsWithData.length > 0 && roundsWithData.every(ls => ls.linescores.length >= 18);
+
+    if (allPlayedComplete && playerScheduledMax < fieldMaxScheduled) {
+      if (fieldMaxScheduled >= 3 && playerPlayedMax <= 2) return 'CUT';
+      if (fieldMaxScheduled >= 4 && playerPlayedMax === 3) return 'MDF';
     }
   }
 
@@ -469,12 +473,15 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     throw new Error(`No score data available for ESPN tournament ${espnTournamentId}`);
   }
 
-  // First pass: determine max round — only count rounds with actual hole data
-  // to avoid pre-created empty future-round entries inflating the count.
-  let maxRound = 0;
+  // First pass: determine the field's max SCHEDULED round (any entry, even 0
+  // holes). ESPN creates a period entry for every player scheduled to play that
+  // round but not for players who missed the cut — so this is how cut detection
+  // tells "made the cut, hasn't teed off" from "cut" (both have the same
+  // played-round count). Used only by deriveOverallStatus.
+  let fieldMaxScheduled = 0;
   for (const c of competitors) {
     for (const ls of c.linescores ?? []) {
-      if (ls.period > maxRound && (ls.linescores ?? []).length > 0) maxRound = ls.period;
+      if (ls.period > fieldMaxScheduled) fieldMaxScheduled = ls.period;
     }
   }
 
@@ -494,7 +501,7 @@ export async function fetchPlayerScores(supabase, espnTournamentId, status = '')
     scoreMap.set(c.id, {
       rounds,
       thru: extractThru(c, linescores),
-      overallStatus: deriveOverallStatus(c, linescores, maxRound),
+      overallStatus: deriveOverallStatus(c, linescores, fieldMaxScheduled),
       totalScore: String(c.score ?? '').trim(),
     });
   }
