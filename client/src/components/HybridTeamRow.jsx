@@ -23,9 +23,9 @@ function scoreColor(val) {
 
 function rankStyle(rank) {
   if (rank === 1) return 'text-pool-gold font-bold';
-  if (rank === 2) return 'text-gray-300 font-bold';
-  if (rank === 3) return 'text-amber-600 font-bold';
-  return 'text-gray-500';
+  if (rank === 2) return 'text-[#cbd5d1] font-bold';
+  if (rank === 3) return 'text-[#c9893f] font-bold';
+  return 'text-pool-even';
 }
 
 function formatScore(val) {
@@ -94,20 +94,13 @@ function AnimatedScore({ value, className }) {
   return <span className={className}>{formatScore(displayed)}</span>;
 }
 
-/** ↑↓ movement indicator — positive = moved up, negative = moved down */
+/** ▲▼ movement indicator — positive = moved up, negative = moved down */
 function MovementBadge({ movement }) {
   if (!movement) return null;
-  if (movement > 0) {
-    return (
-      <span className="flex items-center gap-0.5 text-pool-under text-[10px] font-bold leading-none">
-        <span>↑</span>
-        <span>{movement}</span>
-      </span>
-    );
-  }
+  const up = movement > 0;
   return (
-    <span className="flex items-center gap-0.5 text-pool-over text-[10px] font-bold leading-none">
-      <span>↓</span>
+    <span className={`flex items-center gap-0.5 font-mono text-[10px] font-bold leading-none ${up ? 'text-pool-under' : 'text-pool-over'}`}>
+      <span>{up ? '▲' : '▼'}</span>
       <span>{Math.abs(movement)}</span>
     </span>
   );
@@ -126,72 +119,81 @@ export default function HybridTeamRow({
   isFlashing = false, // true briefly when score changes — triggers flash animation
 }) {
   const isLeader = rank === 1;
-
-  // Leader: gold left border + strong gold inset glow on button
-  const leaderBorder = isLeader
-    ? 'border-l-2 border-pool-gold'
-    : 'border-l-2 border-transparent';
-  const leaderGlow = isLeader
-    ? 'shadow-[inset_0_0_48px_rgba(212,175,55,0.22),0_0_0_1px_rgba(212,175,55,0.50)]'
-    : '';
-
   const roundLabels = ['R1', 'R2', 'R3', 'R4'];
 
+  const roundCell = (val) => {
+    const numeric = isNumericLike(val);
+    const text = numeric ? formatScore(val) : (val != null ? String(val) : '—');
+    const color = numeric ? scoreColor(val) : 'text-pool-faint';
+    return { text, color };
+  };
+
   return (
-    <div className={`bg-pool-surface border-b border-pool-rim ${isFlashing ? 'score-flash' : ''}`}>
+    <div
+      className={`relative rounded-xl mb-2 overflow-hidden bg-pool-surface border ${
+        isLeader ? 'leader-card' : 'border-pool-rim/50'
+      } ${isFlashing ? 'score-flash' : ''}`}
+    >
+      {isLeader && <span className="leader-rail" aria-hidden="true" />}
+
       <button
         type="button"
         onClick={onToggle}
-        className={`w-full text-left px-2 py-2 sm:px-3 ${leaderBorder} ${leaderGlow}`}
+        className="team-row-grid w-full text-left px-3.5 py-3 sm:px-4 sm:py-3.5"
       >
-        <div className="flex items-center gap-3">
-          {/* Rank + movement */}
-          <div className="flex flex-col items-center w-6 shrink-0 gap-0.5">
-            <span className={`text-sm text-center ${rankStyle(rank)}`}>{rank}</span>
-            <MovementBadge movement={movement} />
-          </div>
-
-          {/* Team name + round sub-row */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="block text-pool-primary font-semibold truncate leading-tight">
-                {teamName}
-              </span>
-              {/* Alive count badge — only show when someone has been cut */}
-              {aliveCount !== null && aliveCount < 6 && (
-                <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none ${
-                  aliveCount <= 3
-                    ? 'bg-red-900/60 text-red-300'
-                    : aliveCount <= 4
-                    ? 'bg-amber-900/60 text-amber-300'
-                    : 'bg-pool-surface text-pool-muted border border-pool-rim'
-                }`}>
-                  {aliveCount}/6
-                </span>
-              )}
-            </div>
-            <div className="flex gap-3 mt-0.5">
-              {roundLabels.map((label, i) => {
-                const val = rounds[i] ?? null;
-                const numeric = isNumericLike(val);
-                return (
-                  <span key={label} className="text-xs">
-                    <span className="text-pool-muted">{label}: </span>
-                    <span className={numeric ? scoreColor(val) : 'text-pool-faint'}>
-                      {numeric ? formatScore(val) : (val != null ? String(val) : '—')}
-                    </span>
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Total score — animates when value changes */}
-          <AnimatedScore
-            value={total}
-            className={`font-mono font-bold text-2xl shrink-0 ${scoreColor(total)}`}
-          />
+        {/* Rank + movement */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span className={`font-mono tabular-nums text-base leading-none ${rankStyle(rank)}`}>{rank}</span>
+          <MovementBadge movement={movement} />
         </div>
+
+        {/* Team name + mobile inline round sub-row */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="block text-pool-primary font-bold truncate leading-tight">
+              {teamName}
+            </span>
+            {/* Alive count badge — only show when someone has been cut */}
+            {aliveCount !== null && aliveCount < 6 && (
+              <span className={`shrink-0 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full leading-none ${
+                aliveCount <= 3
+                  ? 'bg-red-900/50 text-red-300'
+                  : aliveCount <= 4
+                  ? 'bg-amber-900/50 text-amber-300'
+                  : 'text-pool-muted border border-pool-rim'
+              }`}>
+                {aliveCount}/6
+              </span>
+            )}
+          </div>
+          <div className="team-inline-rounds flex gap-3.5 mt-1.5 font-mono tabular-nums text-xs">
+            {roundLabels.map((label, i) => {
+              const { text, color } = roundCell(rounds[i] ?? null);
+              return (
+                <span key={label} className="inline-flex gap-1">
+                  <span className="text-pool-faint">{label}</span>
+                  <span className={`font-bold ${color}`}>{text}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Desktop aligned round columns (hidden on mobile via .team-round-col) */}
+        {roundLabels.map((label, i) => {
+          const { text, color } = roundCell(rounds[i] ?? null);
+          return (
+            <span key={label} className={`team-round-col text-center font-mono tabular-nums text-sm font-bold ${color}`}>
+              {text}
+            </span>
+          );
+        })}
+
+        {/* Total score — animates when value changes */}
+        <AnimatedScore
+          value={total}
+          className={`font-mono font-bold text-2xl tabular-nums text-right ${scoreColor(total)}`}
+        />
       </button>
 
       {isExpanded && (

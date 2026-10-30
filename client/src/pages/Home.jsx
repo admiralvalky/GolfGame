@@ -390,7 +390,17 @@ export default function Home() {
 
       {/* Leaderboard */}
       {!loading && !error && data?.teams?.length > 0 && (
-        <div className="rounded-xl overflow-hidden border border-pool-rim">
+        <div>
+          {/* Column header — desktop only (matches .team-row-grid columns) */}
+          <div className="board-colhead px-4 pb-2 text-[10px] font-semibold uppercase tracking-wider text-pool-faint">
+            <span />
+            <span>Team</span>
+            <span className="text-center">R1</span>
+            <span className="text-center">R2</span>
+            <span className="text-center">R3</span>
+            <span className="text-center">R4</span>
+            <span className="text-right">Total</span>
+          </div>
           {data.teams.map((team) => {
             const teamRounds = [
               team.rounds?.[1],
