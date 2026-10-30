@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getTeams, getTournaments, getEspnPlayers, getPicks, savePicks } from '../api.js';
-import AdminTokenControl from '../components/AdminTokenControl.jsx';
 import PlayerPicker from '../components/PlayerPicker.jsx';
 
 export default function Picks() {
@@ -150,7 +149,6 @@ export default function Picks() {
           <p className="text-sm text-pool-muted mt-0.5">{tournament?.name}</p>
         </div>
       </div>
-      <AdminTokenControl />
 
       {/* Team selector */}
       <div className="flex gap-2 flex-wrap">

@@ -10,7 +10,6 @@ import {
   saveTournament,
   deleteTournament,
 } from '../api.js';
-import AdminTokenControl from '../components/AdminTokenControl.jsx';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
@@ -145,10 +144,9 @@ export default function Setup() {
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-pool-primary">Setup</h1>
-      <AdminTokenControl />
 
       {/* Teams Section */}
-      <section className="bg-pool-elevated rounded-xl border border-pool-rim p-6 space-y-4">
+      <section className="bg-pool-elevated rounded-xl border border-pool-rim/50 p-6 space-y-4">
         <h2 className="text-lg font-semibold text-pool-primary">Teams</h2>
 
         <form onSubmit={handleCreateTeam} className="flex gap-2">
@@ -157,12 +155,12 @@ export default function Setup() {
             placeholder="Team name…"
             value={newTeamName}
             onChange={(e) => setNewTeamName(e.target.value)}
-            className="flex-1 bg-pool-surface border border-pool-rim text-pool-primary placeholder:text-pool-faint rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under"
+            className="flex-1 bg-pool-surface border border-pool-rim text-pool-primary placeholder:text-pool-faint rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under"
           />
           <button
             type="submit"
             disabled={teamLoading || !newTeamName.trim()}
-            className="bg-pool-under text-black px-4 py-2 rounded text-sm font-medium hover:bg-green-400 disabled:opacity-50 transition-colors"
+            className="bg-pool-under text-black px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-400 disabled:opacity-50 transition-colors"
           >
             Add Team
           </button>
@@ -172,7 +170,7 @@ export default function Setup() {
         {teams.length === 0 ? (
           <p className="text-sm text-pool-faint">No teams yet. Create one above.</p>
         ) : (
-          <ul className="divide-y divide-pool-rim">
+          <ul className="divide-y divide-pool-rim/40">
             {teams.map((team) => (
               <li key={team.id} className="flex items-center gap-2 py-2.5">
                 {editingTeamId === team.id ? (
@@ -185,7 +183,7 @@ export default function Setup() {
                         if (e.key === 'Enter') handleRenameTeam(team.id);
                         if (e.key === 'Escape') cancelEditTeam();
                       }}
-                      className="flex-1 bg-pool-surface border border-pool-rim text-pool-primary rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under"
+                      className="flex-1 bg-pool-surface border border-pool-rim text-pool-primary rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under"
                     />
                     <button onClick={() => handleRenameTeam(team.id)} className="text-pool-under text-xs font-medium hover:text-green-400">Save</button>
                     <button onClick={cancelEditTeam} className="text-pool-muted text-xs hover:text-pool-primary">Cancel</button>
@@ -204,7 +202,7 @@ export default function Setup() {
       </section>
 
       {/* Tournaments Section */}
-      <section className="bg-pool-elevated rounded-xl border border-pool-rim p-6 space-y-4">
+      <section className="bg-pool-elevated rounded-xl border border-pool-rim/50 p-6 space-y-4">
         <h2 className="text-lg font-semibold text-pool-primary">Tournaments</h2>
 
         {/* Year + Tournament pickers */}
@@ -217,7 +215,7 @@ export default function Setup() {
                 setSelectedYear(Number(e.target.value));
                 setSelectedTournamentId('');
               }}
-              className="bg-pool-surface border border-pool-rim text-pool-primary rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under disabled:opacity-50"
+              className="bg-pool-surface border border-pool-rim text-pool-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under disabled:opacity-50"
             >
               {YEARS.map(y => (
                 <option key={y} value={y}>{y}</option>
@@ -231,7 +229,7 @@ export default function Setup() {
               value={selectedTournamentId}
               onChange={e => setSelectedTournamentId(e.target.value)}
               disabled={scheduleLoading || schedule.length === 0}
-              className="bg-pool-surface border border-pool-rim text-pool-primary rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under disabled:opacity-50"
+              className="bg-pool-surface border border-pool-rim text-pool-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-under disabled:opacity-50"
             >
               <option value="">
                 {scheduleLoading ? 'Loading…' : schedule.length === 0 ? 'No tournaments found' : 'Select a tournament…'}
@@ -250,7 +248,7 @@ export default function Setup() {
             ) : (
               <button
                 onClick={handleSaveTournament}
-                className="bg-pool-under text-black px-4 py-2 rounded text-sm font-medium hover:bg-green-400 transition-colors"
+                className="bg-pool-under text-black px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-400 transition-colors"
               >
                 Add
               </button>
@@ -266,7 +264,7 @@ export default function Setup() {
         {savedTournaments.length > 0 && (
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-pool-faint mb-3">Saved</h3>
-            <ul className="divide-y divide-pool-rim">
+            <ul className="divide-y divide-pool-rim/40">
               {savedTournaments.map((t) => (
                 <li key={t.id} className="py-3 space-y-1.5">
                   <span className="block text-sm font-medium text-pool-primary leading-snug">{tournamentDisplayName(t)}</span>

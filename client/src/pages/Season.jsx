@@ -5,10 +5,11 @@ import { useAutoRefresh } from '../hooks/useAutoRefresh.js';
 import LastUpdated from '../components/LastUpdated.jsx';
 
 function RankBadge({ rank }) {
-  if (rank === 1) return <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-400 text-white text-sm font-bold flex-shrink-0">1</span>;
-  if (rank === 2) return <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-500 text-gray-200 text-sm font-bold flex-shrink-0">2</span>;
-  if (rank === 3) return <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-400 text-white text-sm font-bold flex-shrink-0">3</span>;
-  return <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pool-surface text-pool-muted text-sm font-bold flex-shrink-0">{rank}</span>;
+  const base = 'inline-flex items-center justify-center w-8 h-8 rounded-full font-mono tabular-nums text-sm font-bold flex-shrink-0';
+  if (rank === 1) return <span className={`${base} bg-pool-gold text-[#1a1403]`}>1</span>;
+  if (rank === 2) return <span className={`${base} bg-[#cbd5d1] text-[#1a2420]`}>2</span>;
+  if (rank === 3) return <span className={`${base} bg-[#c9893f] text-[#1a1403]`}>3</span>;
+  return <span className={`${base} bg-pool-elevated text-pool-muted border border-pool-rim/60`}>{rank}</span>;
 }
 
 function Medal({ emoji, count }) {
@@ -81,10 +82,10 @@ function H2HMatrix({ teams }) {
   return (
     <div className="space-y-2">
       <h2 className="text-sm font-semibold text-pool-primary uppercase tracking-wider">Head-to-Head</h2>
-      <div className="overflow-x-auto rounded-xl border border-pool-rim">
+      <div className="overflow-x-auto rounded-xl border border-pool-rim/50">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="border-b border-pool-rim">
+            <tr className="border-b border-pool-rim/60">
               <th className="text-left px-3 py-2 text-pool-faint font-normal w-24 bg-pool-elevated">vs</th>
               {teams.map(t => (
                 <th key={t.team_id} className="px-2 py-2 text-pool-muted font-semibold text-center bg-pool-elevated min-w-[3.5rem]">
@@ -93,7 +94,7 @@ function H2HMatrix({ teams }) {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-pool-rim">
+          <tbody className="divide-y divide-pool-rim/40">
             {teams.map((row, ri) => (
               <tr key={row.team_id} className={ri % 2 === 0 ? 'bg-pool-elevated' : 'bg-pool-surface'}>
                 <td className="px-3 py-2 text-pool-secondary font-semibold truncate max-w-[6rem]">
@@ -112,7 +113,7 @@ function H2HMatrix({ teams }) {
                   const hasData = r.wins + r.losses + r.ties > 0;
                   if (!hasData) return <td key={col.team_id} className="px-2 py-2 text-center text-pool-faint">—</td>;
                   return (
-                    <td key={col.team_id} className="px-2 py-2 text-center font-mono">
+                    <td key={col.team_id} className="px-2 py-2 text-center font-mono tabular-nums">
                       <span className={r.wins > r.losses ? 'text-pool-under' : r.wins < r.losses ? 'text-pool-over' : 'text-pool-even'}>
                         {r.wins}-{r.losses}{r.ties > 0 ? `-${r.ties}` : ''}
                       </span>
@@ -175,7 +176,7 @@ export default function Season() {
       </div>
 
       {/* Season standings */}
-      <div className="bg-pool-elevated rounded-xl border border-pool-rim divide-y divide-pool-rim">
+      <div className="space-y-2">
         {teams.map((team) => {
           const avg = team.avgScore;
           const avgDisplay = avg == null ? null : avg === 0 ? 'E' : avg > 0 ? `+${avg}` : String(avg);
@@ -186,8 +187,11 @@ export default function Season() {
             <Link
               key={team.team_id}
               to={`/season/team/${team.team_id}`}
-              className="flex items-center gap-3 px-4 py-4 hover:bg-pool-surface transition-colors"
+              className={`relative flex items-center gap-3 px-4 py-3.5 rounded-xl border bg-pool-surface transition-colors hover:bg-pool-surface-2 ${
+                isLeader ? 'leader-card' : 'border-pool-rim/50'
+              }`}
             >
+              {isLeader && <span className="leader-rail" aria-hidden="true" />}
               <RankBadge rank={team.rank} />
 
               {/* Name + stats block */}
@@ -211,12 +215,12 @@ export default function Season() {
                   <div className="ml-auto flex flex-col items-end gap-0.5">
                     {avgDisplay && (
                       <span className="text-xs text-pool-faint">
-                        Avg score <span className="font-mono text-pool-muted font-medium">{avgDisplay}</span>
+                        Avg score <span className="font-mono tabular-nums text-pool-muted font-medium">{avgDisplay}</span>
                       </span>
                     )}
                     {team.avgFinish != null && (
                       <span className="text-xs text-pool-faint">
-                        Avg finish <span className="font-mono text-pool-muted font-medium">{team.avgFinish}</span>
+                        Avg finish <span className="font-mono tabular-nums text-pool-muted font-medium">{team.avgFinish}</span>
                       </span>
                     )}
                   </div>
@@ -228,7 +232,7 @@ export default function Season() {
                     <span className="text-pool-gold">★</span>
                     <span className="text-pool-faint">Best pick:</span>
                     <span className="text-pool-secondary font-medium">{team.bestPick.playerName}</span>
-                    <span className={`font-mono font-semibold ${team.bestPick.numericScore < 0 ? 'text-pool-under' : team.bestPick.numericScore === 0 ? 'text-pool-even' : 'text-pool-over'}`}>
+                    <span className={`font-mono tabular-nums font-semibold ${team.bestPick.numericScore < 0 ? 'text-pool-under' : team.bestPick.numericScore === 0 ? 'text-pool-even' : 'text-pool-over'}`}>
                       {formatScore(team.bestPick.numericScore)}
                     </span>
                     <span className="text-pool-faint truncate">@ {team.bestPick.tournamentName}</span>
