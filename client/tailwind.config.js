@@ -3,10 +3,15 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Hanken Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
       colors: {
         pool: {
           base:          '#0d1f15',
           surface:       '#1a3a2a',
+          'surface-2':   '#204832',
           elevated:      '#0f2318',
           rim:           '#2d5a3d',
           primary:       '#f0fdf4',

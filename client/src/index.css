@@ -19,6 +19,52 @@
   }
 
   /*
+   * Team leaderboard row grid.
+   * Mobile: rank | body (name + inline rounds) | total.
+   * Desktop (sm: 640px+): rank | team | R1 | R2 | R3 | R4 | total — aligned columns.
+   * The inline round sub-row (.team-inline-rounds) and the per-column cells
+   * (.team-round-col) swap visibility at the breakpoint so only one shows at a time.
+   */
+  .team-row-grid {
+    display: grid;
+    align-items: center;
+    gap: 0.75rem;
+    grid-template-columns: 1.75rem 1fr auto;
+  }
+  .team-round-col { display: none; }
+
+  @media (min-width: 640px) {
+    .team-row-grid {
+      grid-template-columns: 1.75rem 1fr 2.75rem 2.75rem 2.75rem 2.75rem 4rem;
+    }
+    .team-round-col { display: block; }
+    .team-inline-rounds { display: none; }
+  }
+
+  /* Column header above the leaderboard — desktop only, matches .team-row-grid */
+  .board-colhead { display: none; }
+  @media (min-width: 640px) {
+    .board-colhead {
+      display: grid;
+      align-items: center;
+      gap: 0.75rem;
+      grid-template-columns: 1.75rem 1fr 2.75rem 2.75rem 2.75rem 2.75rem 4rem;
+    }
+  }
+
+  /* Leader card: calm gold tint wash + a 3px gold rail (replaces the old heavy inset glow) */
+  .leader-card {
+    border-color: rgba(212, 175, 55, 0.45);
+    background-image: linear-gradient(90deg, rgba(212, 175, 55, 0.10), rgba(212, 175, 55, 0) 42%);
+  }
+  .leader-rail {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(#d4af37, #b8912a);
+  }
+
+  /*
    * Player row grid — responsive column widths.
    * Columns: pos | avatar | name | thru | R1 | R2 | R3 | R4 | Tot
    * Mobile: R1-R4 tightened to 1.5rem each (saves 2rem, gives name more room).
