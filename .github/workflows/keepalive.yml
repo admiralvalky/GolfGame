@@ -1,0 +1,68 @@
+name: Supabase keepalive
+
+# Supabase's free tier pauses a project after 7 days with no activity.
+# This pool app is idle most of the year and only gets heavy use around the
+# spring majors, so this workflow sends a daily request to the database to keep
+# it awake. It talks to Supabase directly, so it does NOT depend on Vercel's
+# cron (unreliable on the Hobby plan) or on the deployment's Vercel
+# Authentication — the two things that let the project go idle before.
+#
+# One-time setup: add two repository secrets (Settings -> Secrets and variables
+# -> Actions), matching the Vercel env values:
+#   SUPABASE_URL          e.g. https://qgxcaeajiytzwyummoor.supabase.co
+#   SUPABASE_SERVICE_KEY  the service role key
+
+on:
+  schedule:
+    - cron: '0 12 * * *'   # every day at 12:00 UTC
+  workflow_dispatch: {}      # allow manual runs from the Actions tab
+
+permissions:
+  contents: write            # for the monthly heartbeat commit below
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Query Supabase (keeps the project active)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
+            echo "Missing SUPABASE_URL / SUPABASE_SERVICE_KEY repo secrets." >&2
+            exit 1
+          fi
+          code=$(curl -s -o /tmp/resp.json -w '%{http_code}' \
+            "$SUPABASE_URL/rest/v1/tournaments?select=id&limit=1" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY")
+          echo "HTTP $code"
+          cat /tmp/resp.json; echo
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "Keepalive query failed." >&2
+            exit 1
+          fi
+
+      - name: Monthly heartbeat (keep this schedule from auto-disabling)
+        if: github.event_name == 'schedule'
+        run: |
+          # GitHub disables scheduled workflows after 60 days with no commits to
+          # the repo. During a long off-season nothing else pushes, so one tiny
+          # commit on the 1st of each month resets that clock.
+          if [ "$(date -u +%d)" != "01" ]; then
+            echo "Not the 1st of the month — skipping heartbeat commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          mkdir -p .github
+          echo "$stamp" > .github/keepalive-heartbeat.txt
+          git add .github/keepalive-heartbeat.txt
+          git commit -m "chore: keepalive heartbeat ($stamp) [skip ci]" || {
+            echo "Nothing to commit."; exit 0;
+          }
+          git push
